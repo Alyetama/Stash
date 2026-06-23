@@ -1,11 +1,33 @@
-# Swift / SPM build artifacts
+# ───────── Swift / SwiftPM ─────────
 .build/
+.swiftpm/
+Package.resolved
 *.o
 *.swiftmodule
+*.swiftdoc
+
+# ───────── Xcode ─────────
 DerivedData/
+build/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
 
-# macOS
+# ───────── Build output / bundles ─────────
+# (the released disk image under dist/ and docs/ is committed on purpose)
+*.app/
+*.iconset/
+
+# ───────── macOS ─────────
 .DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
 
-# Local editor state
-.swiftpm/
+# ───────── Editors ─────────
+.vscode/
+.idea/
+*.swp
+*~
