@@ -49,6 +49,11 @@ final class Indexer: ObservableObject {
             if hasCopyEm && !alreadyImported {
                 try importFromCopyEm(sc, initial: true)
             }
+            // One-time backfill of historical IMAGE clips from Copy 'Em.
+            let imagesDone = (try? sc.getMeta("copyem_images_imported")) == "1"
+            if hasCopyEm && !imagesDone {
+                try importCopyEmImages(sc)
+            }
         } catch {
             fail(error)
         }
@@ -157,6 +162,57 @@ final class Indexer: ObservableObject {
         publish {
             self.indexedCount = count
             self.buildDone = count
+            self.phase = .ready
+            self.lastSync = Date()
+            self.message = "Ready"
+        }
+    }
+
+    // MARK: - Copy 'Em image backfill (optional, one-time)
+
+    func importCopyEmImages() {
+        queue.async { [weak self] in
+            guard let self, let sc = self.sidecar else { return }
+            do { try self.importCopyEmImages(sc) } catch { self.fail(error) }
+        }
+    }
+
+    private func importCopyEmImages(_ sc: SidecarDB) throws {
+        guard SourceStore.exists(at: sourcePath) else { return }
+        let source = try SourceStore(path: sourcePath)
+        let total = Int(try source.imageEntryCount())
+        guard total > 0 else { try sc.setMeta("copyem_images_imported", "1"); return }
+
+        publish {
+            self.phase = .importing
+            self.buildTotal = total
+            self.buildDone = 0
+            self.message = "Importing \(total.formatted()) images from Copy 'Em…"
+        }
+        try? FileManager.default.createDirectory(atPath: Sidecar.imagesDir, withIntermediateDirectories: true)
+
+        var done = 0
+        try source.forEachImageEntry { cand in
+            done += 1
+            if done % 50 == 0 {
+                let d = done, c = Int((try? sc.count()) ?? 0)
+                self.publish { self.buildDone = d; self.indexedCount = c }
+            }
+            guard let (data, ext) = CopyEmImage.extractLargest(from: cand.blob),
+                  let thumb = ImageThumb.make(from: data, maxPixel: 96) else { return }
+            let label = "Image · \(thumb.w)×\(thumb.h)"
+            let when = cand.created > 0 ? Date(timeIntervalSince1970: cand.created) : Date()
+            guard let pk = try? sc.insertImage(label: label, app: cand.app, w: thumb.w, h: thumb.h,
+                                               ext: ext, source: "copyem", at: when) else { return }
+            try? data.write(to: URL(fileURLWithPath: Sidecar.imageFile(pk: pk, ext: ext)))
+            try? thumb.png.write(to: URL(fileURLWithPath: Sidecar.thumbFile(pk: pk)))
+        }
+
+        try sc.setMeta("copyem_images_imported", "1")
+        let count = Int(try sc.count())
+        publish {
+            self.indexedCount = count
+            self.buildDone = total
             self.phase = .ready
             self.lastSync = Date()
             self.message = "Ready"

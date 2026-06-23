@@ -54,7 +54,7 @@ Everything is **100% local** — no network access, no telemetry. Your clips nev
 
 **Your data**
 - 💾 **Export** — save your entire history to a standalone SQLite database (a clean `clips` table) for backup or analysis.
-- 📦 **Optional Copy 'Em import** — already use [Copy 'Em](https://apprywhere.com)? Stash imports your existing history **once**, strictly **read-only** (it never modifies Copy 'Em's data). On machines without it, this step is simply skipped — Stash works fine on its own.
+- 📦 **Optional Copy 'Em import** — already use [Copy 'Em](https://apprywhere.com)? Stash imports your existing history **once** (text **and** images, with thumbnails), strictly **read-only** (it never modifies Copy 'Em's data). On machines without it, this step is simply skipped — Stash works fine on its own.
 
 ## Install
 

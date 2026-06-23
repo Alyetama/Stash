@@ -102,6 +102,45 @@ final class SourceStore {
         return set
     }
 
+    /// One text-less Copy 'Em entry whose pasteboard data may contain an image.
+    struct ImageCandidate {
+        var pk: Int64
+        var blob: Data
+        var app: String?
+        var created: Double   // unix seconds
+    }
+
+    private static let imageEntrySQL = """
+        SELECT c.Z_PK, i.ZTYPESANDDATA, a.ZNAME, c.ZCREATIONDATE
+        FROM ZPASTEBOARDCONTENTS c
+        JOIN ZPASTEBOARDCONTENTSITEMSWRAPPER w ON c.ZITEMSWRAPPER = w.Z_PK
+        JOIN ZPASTEBOARDCONTENTSITEM i        ON i.Z5ITEMS = w.Z_PK
+        LEFT JOIN ZPASTEBOARDCONTENTSAPP a    ON c.ZAPPLICATION = a.Z_PK
+        WHERE c.ZTRASHDATE IS NULL AND w.ZSTRING IS NULL AND i.ZTYPESANDDATA IS NOT NULL
+        ORDER BY c.ZCREATIONDATE
+    """
+
+    /// Count of text-less entries that might hold an image (upper bound).
+    func imageEntryCount() throws -> Int64 {
+        try db.scalarInt("""
+            SELECT COUNT(*) FROM ZPASTEBOARDCONTENTS c
+            JOIN ZPASTEBOARDCONTENTSITEMSWRAPPER w ON c.ZITEMSWRAPPER = w.Z_PK
+            JOIN ZPASTEBOARDCONTENTSITEM i        ON i.Z5ITEMS = w.Z_PK
+            WHERE c.ZTRASHDATE IS NULL AND w.ZSTRING IS NULL AND i.ZTYPESANDDATA IS NOT NULL
+        """) ?? 0
+    }
+
+    /// Stream text-less entries with their raw pasteboard-data blob.
+    func forEachImageEntry(_ handler: (ImageCandidate) -> Void) throws {
+        let s = try db.prepare(SourceStore.imageEntrySQL)
+        defer { s.finalize() }
+        while try s.step() {
+            guard let blob = s.blob(1) else { continue }
+            let created = s.isNull(3) ? 0 : s.double(3) + SourceStore.coreDataEpoch
+            handler(ImageCandidate(pk: s.int(0), blob: blob, app: s.string(2), created: created))
+        }
+    }
+
     /// Full, untruncated text for one entry — fetched only when the user copies it.
     func fullText(pk: Int64) throws -> String? {
         let s = try db.prepare("""

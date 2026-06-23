@@ -130,4 +130,9 @@ final class Statement {
         guard let c = sqlite3_column_text(stmt, col) else { return nil }
         return String(cString: c)
     }
+    func blob(_ col: Int32) -> Data? {
+        guard let bytes = sqlite3_column_blob(stmt, col) else { return nil }
+        let count = Int(sqlite3_column_bytes(stmt, col))
+        return Data(bytes: bytes, count: count)
+    }
 }

@@ -154,21 +154,22 @@ final class SidecarDB {
 
     private lazy var imageStmt = try! db.prepare("""
         INSERT INTO entries(text, app, list, created, usecount, source, source_pk, kind, img_w, img_h, ext)
-        VALUES (?, ?, NULL, ?, 0, 'clipboard', NULL, 'image', ?, ?, ?)
+        VALUES (?, ?, NULL, ?, 0, ?, NULL, 'image', ?, ?, ?)
     """)
 
-    /// Record an image clip. `text` is a searchable label (e.g. "Image 1280×720").
+    /// Record an image clip. `label` is a searchable string (e.g. "Image 1280×720").
     /// Returns the new row's pk so the caller can write the image files named by it.
     func insertImage(label: String, app: String?, w: Int, h: Int, ext: String,
-                     at date: Date = Date()) throws -> Int64 {
+                     source: String = "clipboard", at date: Date = Date()) throws -> Int64 {
         let s = imageStmt
         s.reset()
         s.bind(1, label)
         if let app { s.bind(2, app) } else { s.bindNull(2) }
         s.bind(3, date.timeIntervalSince1970)
-        s.bind(4, Int64(w))
-        s.bind(5, Int64(h))
-        s.bind(6, ext)
+        s.bind(4, source)
+        s.bind(5, Int64(w))
+        s.bind(6, Int64(h))
+        s.bind(7, ext)
         try s.step()
         return db.lastInsertRowID
     }
