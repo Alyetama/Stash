@@ -105,6 +105,7 @@ final class PanelController: NSObject, NSWindowDelegate {
         let root = SearchView(controller: controller, indexer: indexer,
                               transforms: controller.transforms,
                               ai: controller.ai,
+                              theme: controller.theme,
                               onHoldChange: { [weak self] hold in
                                   guard let self else { return }
                                   if hold {

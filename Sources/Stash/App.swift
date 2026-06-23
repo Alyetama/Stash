@@ -17,10 +17,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let indexer = Indexer()
     private let transforms = TransformSettings()
     private let aiSettings = AISettings()
-    private lazy var controller = SearchController(sourcePath: indexer.sourcePath, indexer: indexer, transforms: transforms, ai: aiSettings)
+    private let themeSettings = ThemeSettings()
+    private lazy var controller = SearchController(sourcePath: indexer.sourcePath, indexer: indexer, transforms: transforms, ai: aiSettings, theme: themeSettings)
     private lazy var panelController = PanelController(controller: controller, indexer: indexer)
     private lazy var settingsWindow = SettingsWindowController(
-        indexer: indexer, ai: aiSettings,
+        indexer: indexer, ai: aiSettings, theme: themeSettings,
         onExport: { [weak self] in self?.exportData() },
         onImport: { [weak self] in self?.importFromCEP() })
     private var statusItem: NSStatusItem!

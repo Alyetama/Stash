@@ -5,6 +5,7 @@ struct SearchView: View {
     @ObservedObject var indexer: Indexer
     @ObservedObject var transforms: TransformSettings
     @ObservedObject var ai: AISettings
+    @ObservedObject var theme: ThemeSettings
     var onHoldChange: (Bool) -> Void
     var onClose: () -> Void
     @State private var showTransforms = false
@@ -18,7 +19,9 @@ struct SearchView: View {
             Divider().opacity(0.4)
             footer
         }
-        .background(VisualEffectView().ignoresSafeArea())
+        .background(theme.theme.panelBackground())
+        .environment(\.appTheme, theme.theme)
+        .tint(theme.theme.accent)
         .frame(minWidth: 560, minHeight: 360)
         .onChange(of: controller.query) { _ in controller.runSearch() }
         .onChange(of: controller.mode) { _ in controller.runSearch() }
@@ -80,7 +83,7 @@ struct SearchView: View {
             if controller.mode == .regex {
                 Button { showAI.toggle() } label: {
                     Image(systemName: "sparkles")
-                        .foregroundStyle(ai.enabled ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.secondary))
+                        .foregroundStyle(ai.enabled ? AnyShapeStyle(theme.theme.accent) : AnyShapeStyle(.secondary))
                 }
                 .buttonStyle(.borderless)
                 .help("Generate a regex with AI")
@@ -225,6 +228,7 @@ struct SearchView: View {
 private struct ResultRow: View {
     let result: SearchResult
     let selected: Bool
+    @Environment(\.appTheme) private var theme
     @State private var hovering = false
     @State private var expanded = false
 
@@ -347,7 +351,7 @@ private struct ResultRow: View {
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(selected
-                      ? AnyShapeStyle(LinearGradient(colors: [Color.accentColor.opacity(0.95), Color.accentColor.opacity(0.78)],
+                      ? AnyShapeStyle(LinearGradient(colors: theme.selectionGradient,
                                                      startPoint: .top, endPoint: .bottom))
                       : (hovering ? AnyShapeStyle(Color.primary.opacity(0.07)) : AnyShapeStyle(Color.clear)))
         )
@@ -356,7 +360,7 @@ private struct ResultRow: View {
             ? RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(.white.opacity(0.18), lineWidth: 0.5)
             : nil
         )
-        .shadow(color: selected ? Color.accentColor.opacity(0.35) : .clear, radius: 6, y: 2)
+        .shadow(color: selected ? theme.glow : .clear, radius: 6, y: 2)
         .padding(.horizontal, 8)
         .onHover { hovering = $0 }
     }
