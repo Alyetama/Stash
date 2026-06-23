@@ -111,6 +111,7 @@ final class PanelController: NSObject, NSWindowDelegate {
         panel.makeKeyAndOrderFront(nil)
         panel.orderFrontRegardless()
         // Load the latest items (query is blank on open) and focus the field.
+        controller.refreshGroups()
         controller.runSearch()
         NotificationCenter.default.post(name: .focusSearchField, object: nil)
     }
@@ -127,6 +128,7 @@ final class PanelController: NSObject, NSWindowDelegate {
                               transforms: controller.transforms,
                               ai: controller.ai,
                               theme: controller.theme,
+                              groups: controller.groups,
                               onOpenSettings: { [weak self] in self?.onOpenSettings?() },
                               onHoldChange: { [weak self] hold in
                                   guard let self else { return }

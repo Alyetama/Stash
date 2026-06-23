@@ -7,12 +7,17 @@ struct SearchView: View {
     @ObservedObject var transforms: TransformSettings
     @ObservedObject var ai: AISettings
     @ObservedObject var theme: ThemeSettings
+    @ObservedObject var groups: GroupSettings
     var onOpenSettings: () -> Void
     var onHoldChange: (Bool) -> Void
     var onClose: () -> Void
     var compact: Bool = false
     @State private var showTransforms = false
     @State private var showAI = false
+    // New-group prompt. `newGroupTarget` is the entry to add once created (nil = just create + view it).
+    @State private var showNewGroup = false
+    @State private var newGroupName = ""
+    @State private var newGroupTarget: SearchResult?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -28,9 +33,24 @@ struct SearchView: View {
         .frame(minWidth: compact ? 360 : 560, minHeight: compact ? 300 : 360)
         .onChange(of: controller.query) { _ in controller.runSearch() }
         .onChange(of: controller.mode) { _ in controller.runSearch() }
-        .onChange(of: controller.favoritesOnly) { _ in controller.runSearch() }
+        .onChange(of: controller.scope) { _ in controller.runSearch() }
         // Keep the panel open while the AI popover (and its Keychain prompt) is up.
         .onChange(of: showAI) { onHoldChange($0) }
+        .onAppear { controller.refreshGroups() }
+        .alert("New group", isPresented: $showNewGroup) {
+            TextField("Group name", text: $newGroupName)
+            Button("Create") {
+                let name = newGroupName
+                newGroupName = ""
+                guard let created = groups.add(name) else { return }
+                if let target = newGroupTarget { controller.assignGroup(target, to: created) }
+                else { controller.scope = .group(created) }
+                newGroupTarget = nil
+            }
+            Button("Cancel", role: .cancel) { newGroupName = ""; newGroupTarget = nil }
+        } message: {
+            Text(newGroupTarget == nil ? "Name a new group to view." : "Name a new group to add this clip to.")
+        }
     }
 
     // MARK: header (search field + mode selector)
@@ -61,22 +81,44 @@ struct SearchView: View {
         .frame(width: compact ? nil : 210)
     }
 
-    // Scope dropdown: All clips vs Favorites.
+    private var scopeIcon: String {
+        switch controller.scope {
+        case .favorites: return "star.fill"
+        case .group:     return "tag.fill"
+        case .all:       return "line.3.horizontal.decrease.circle"
+        }
+    }
+    private func isScope(_ s: SearchScope) -> Bool { controller.scope == s }
+
+    // Scope dropdown: All clips / Favorites / each named group.
     private var favoritesMenu: some View {
         Menu {
-            Button { controller.favoritesOnly = false } label: {
-                Label("All clips", systemImage: controller.favoritesOnly ? "" : "checkmark")
+            Button { controller.scope = .all } label: {
+                Label("All clips", systemImage: isScope(.all) ? "checkmark" : "tray.full")
             }
-            Button { controller.favoritesOnly = true } label: {
-                Label("Favorites", systemImage: controller.favoritesOnly ? "checkmark" : "star")
+            Button { controller.scope = .favorites } label: {
+                Label("Favorites", systemImage: isScope(.favorites) ? "checkmark" : "star")
+            }
+            if !groups.groups.isEmpty {
+                Divider()
+                ForEach(groups.groups, id: \.self) { g in
+                    Button { controller.scope = .group(g) } label: {
+                        Label(g, systemImage: isScope(.group(g)) ? "checkmark" : "tag")
+                    }
+                }
+            }
+            Divider()
+            Button { newGroupTarget = nil; newGroupName = ""; showNewGroup = true } label: {
+                Label("New group…", systemImage: "plus")
             }
         } label: {
-            Image(systemName: controller.favoritesOnly ? "star.fill" : "line.3.horizontal.decrease.circle")
-                .foregroundStyle(controller.favoritesOnly ? AnyShapeStyle(.yellow) : AnyShapeStyle(.secondary))
+            Image(systemName: scopeIcon)
+                .foregroundStyle(isScope(.all) ? AnyShapeStyle(.secondary)
+                                 : (isScope(.favorites) ? AnyShapeStyle(.yellow) : AnyShapeStyle(theme.theme.accent)))
         }
         .menuStyle(.borderlessButton)
         .fixedSize()
-        .help("Show all clips or only favorites")
+        .help("Filter by favorites or a group")
     }
 
     private var transformsButton: some View {
@@ -156,6 +198,29 @@ struct SearchView: View {
         }
     }
 
+    @ViewBuilder
+    private func groupSubmenu(for r: SearchResult) -> some View {
+        Menu {
+            ForEach(groups.groups, id: \.self) { g in
+                Button { controller.assignGroup(r, to: g) } label: {
+                    if r.list == g { Label(g, systemImage: "checkmark") } else { Text(g) }
+                }
+            }
+            if let l = r.list, !l.isEmpty {
+                Divider()
+                Button { controller.assignGroup(r, to: nil) } label: {
+                    Label("Remove from group", systemImage: "tag.slash")
+                }
+            }
+            Divider()
+            Button { newGroupTarget = r; newGroupName = ""; showNewGroup = true } label: {
+                Label("New group…", systemImage: "plus")
+            }
+        } label: {
+            Label("Add to Group", systemImage: "tray.full")
+        }
+    }
+
     private var resultsList: some View {
         ScrollViewReader { proxy in
             ScrollView {
@@ -181,6 +246,8 @@ struct SearchView: View {
                                     Label(r.favorite ? "Remove from Favorites" : "Add to Favorites",
                                           systemImage: r.favorite ? "star.slash" : "star")
                                 }
+
+                                groupSubmenu(for: r)
 
                                 Divider()
 

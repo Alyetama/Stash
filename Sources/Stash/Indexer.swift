@@ -295,6 +295,22 @@ final class Indexer: ObservableObject {
         }
     }
 
+    /// Assign an entry to a named group (or clear it with nil).
+    func setGroup(pk: Int64, _ name: String?, completion: @escaping () -> Void = {}) {
+        queue.async { [weak self] in
+            self?.sidecar?.setList(pk: pk, name)
+            DispatchQueue.main.async(execute: completion)
+        }
+    }
+
+    /// Fetch the distinct group names currently in use (e.g. to surface imported lists).
+    func fetchGroups(completion: @escaping ([String]) -> Void) {
+        queue.async { [weak self] in
+            let g = self?.sidecar?.distinctLists() ?? []
+            DispatchQueue.main.async { completion(g) }
+        }
+    }
+
     // MARK: - export
 
     /// Export the whole clipboard history to a standalone SQLite database at `url`

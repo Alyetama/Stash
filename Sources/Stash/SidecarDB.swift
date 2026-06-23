@@ -220,6 +220,23 @@ final class SidecarDB {
         s.bind(1, hash); s.bind(2, pk); _ = try? s.step()
     }
 
+    /// Assign an entry to a named group (its `list`), or clear it with nil.
+    func setList(pk: Int64, _ list: String?) {
+        guard let s = try? db.prepare("UPDATE entries SET list = ? WHERE pk = ?") else { return }
+        defer { s.finalize() }
+        if let l = list, !l.isEmpty { s.bind(1, l) } else { s.bindNull(1) }
+        s.bind(2, pk); _ = try? s.step()
+    }
+
+    /// Distinct non-empty group names currently in use.
+    func distinctLists() -> [String] {
+        guard let s = try? db.prepare("SELECT DISTINCT list FROM entries WHERE list IS NOT NULL AND list <> '' ORDER BY list COLLATE NOCASE") else { return [] }
+        defer { s.finalize() }
+        var out: [String] = []
+        while (try? s.step()) == true { if let v = s.string(0) { out.append(v) } }
+        return out
+    }
+
     func count() throws -> Int64 { try db.scalarInt("SELECT COUNT(*) FROM entries") ?? 0 }
 
     /// Delete one entry (FTS rows are removed by the AFTER DELETE trigger).
@@ -251,6 +268,31 @@ final class SidecarDB {
 }
 
 /// Owns a read-only connection used for searching, confined to the search queue.
+/// What subset of clips to show: everything, only favorites, or a named group.
+enum SearchScope: Equatable {
+    case all
+    case favorites
+    case group(String)
+
+    var groupName: String? { if case .group(let n) = self { return n } else { return nil } }
+    /// Standalone WHERE clause (recent / regex queries).
+    var whereClause: String {
+        switch self {
+        case .all:       return ""
+        case .favorites: return "WHERE e.favorite = 1"
+        case .group:     return "WHERE e.list = ?"
+        }
+    }
+    /// Extra condition appended after an FTS `MATCH ?`.
+    var andClause: String {
+        switch self {
+        case .all:       return ""
+        case .favorites: return " AND e.favorite = 1"
+        case .group:     return " AND e.list = ?"
+        }
+    }
+}
+
 final class SearchEngine {
     private let db: SQLite
     static let pageSize = 200
@@ -261,17 +303,19 @@ final class SearchEngine {
     }
 
     /// Most recently added entries (newest first) — shown when the query is empty.
-    func recent(offset: Int, limit: Int, favoritesOnly: Bool) -> [SearchResult] {
+    func recent(offset: Int, limit: Int, scope: SearchScope) -> [SearchResult] {
         do {
             let s = try db.prepare("""
                 SELECT \(SidecarDB.cols) FROM entries e
-                \(favoritesOnly ? "WHERE e.favorite = 1" : "")
+                \(scope.whereClause)
                 ORDER BY e.created DESC, e.pk DESC
                 LIMIT ? OFFSET ?
             """)
             defer { s.finalize() }
-            s.bind(1, Int64(limit))
-            s.bind(2, Int64(offset))
+            var i: Int32 = 1
+            if let g = scope.groupName { s.bind(i, g); i += 1 }
+            s.bind(i, Int64(limit)); i += 1
+            s.bind(i, Int64(offset))
             return try collect(s)
         } catch {
             return []
@@ -280,14 +324,14 @@ final class SearchEngine {
 
     /// Fetch one page of results. `offset` is how many already-loaded rows to skip.
     func search(_ raw: String, mode: SearchMode, offset: Int, limit: Int,
-                favoritesOnly: Bool, isCancelled: () -> Bool) -> [SearchResult] {
+                scope: SearchScope, isCancelled: () -> Bool) -> [SearchResult] {
         let query = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return [] }
         do {
             switch mode {
-            case .substring: return try ftsSearch(query, table: "fts_trigram", trigram: true, offset: offset, limit: limit, favoritesOnly: favoritesOnly)
-            case .words:     return try ftsSearch(query, table: "fts_words", trigram: false, offset: offset, limit: limit, favoritesOnly: favoritesOnly)
-            case .regex:     return try regexSearch(query, offset: offset, limit: limit, favoritesOnly: favoritesOnly, isCancelled: isCancelled)
+            case .substring: return try ftsSearch(query, table: "fts_trigram", trigram: true, offset: offset, limit: limit, scope: scope)
+            case .words:     return try ftsSearch(query, table: "fts_words", trigram: false, offset: offset, limit: limit, scope: scope)
+            case .regex:     return try regexSearch(query, offset: offset, limit: limit, scope: scope, isCancelled: isCancelled)
             }
         } catch {
             return []
@@ -315,29 +359,31 @@ final class SearchEngine {
     }
 
     private func ftsSearch(_ query: String, table: String, trigram: Bool,
-                           offset: Int, limit: Int, favoritesOnly: Bool) throws -> [SearchResult] {
+                           offset: Int, limit: Int, scope: SearchScope) throws -> [SearchResult] {
         guard let expr = ftsExpression(query, trigram: trigram) else { return [] }
         let order = trigram ? "e.created DESC" : "bm25(\(table))"
         let sql = """
             SELECT \(SidecarDB.cols)
             FROM \(table) f
             JOIN entries e ON e.pk = f.rowid
-            WHERE f.\(table) MATCH ?\(favoritesOnly ? " AND e.favorite = 1" : "")
+            WHERE f.\(table) MATCH ?\(scope.andClause)
             ORDER BY \(order)
             LIMIT ? OFFSET ?
         """
         let s = try db.prepare(sql)
         defer { s.finalize() }
-        s.bind(1, expr)
-        s.bind(2, Int64(limit))
-        s.bind(3, Int64(offset))
+        var i: Int32 = 1
+        s.bind(i, expr); i += 1
+        if let g = scope.groupName { s.bind(i, g); i += 1 }
+        s.bind(i, Int64(limit)); i += 1
+        s.bind(i, Int64(offset))
         return try collect(s)
     }
 
     // MARK: regex (full scan of the compact text)
 
     private func regexSearch(_ pattern: String, offset: Int, limit: Int,
-                             favoritesOnly: Bool, isCancelled: () -> Bool) throws -> [SearchResult] {
+                             scope: SearchScope, isCancelled: () -> Bool) throws -> [SearchResult] {
         let re: NSRegularExpression
         do {
             re = try NSRegularExpression(pattern: pattern, options: [.caseInsensitive])
@@ -346,10 +392,11 @@ final class SearchEngine {
         }
         let s = try db.prepare("""
             SELECT \(SidecarDB.cols) FROM entries e
-            \(favoritesOnly ? "WHERE e.favorite = 1" : "")
+            \(scope.whereClause)
             ORDER BY e.created DESC
         """)
         defer { s.finalize() }
+        if let g = scope.groupName { s.bind(1, g) }
         var out: [SearchResult] = []
         var matchIndex = 0
         var sinceCheck = 0

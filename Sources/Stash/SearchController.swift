@@ -11,12 +11,13 @@ final class SearchController: ObservableObject {
     @Published private(set) var status = ""
     @Published private(set) var searching = false
     @Published private(set) var hasMore = false
-    @Published var favoritesOnly = false
+    @Published var scope: SearchScope = .all
 
     let sourcePath: String
     let transforms: TransformSettings
     let ai: AISettings
     let theme: ThemeSettings
+    let groups: GroupSettings
     private weak var indexer: Indexer?
 
     private let searchQueue = DispatchQueue(label: "com.local.stash.search")
@@ -30,12 +31,14 @@ final class SearchController: ObservableObject {
     init(sourcePath: String, indexer: Indexer? = nil,
          transforms: TransformSettings = TransformSettings(),
          ai: AISettings = AISettings(),
-         theme: ThemeSettings = ThemeSettings()) {
+         theme: ThemeSettings = ThemeSettings(),
+         groups: GroupSettings = GroupSettings()) {
         self.sourcePath = sourcePath
         self.indexer = indexer
         self.transforms = transforms
         self.ai = ai
         self.theme = theme
+        self.groups = groups
     }
 
     /// Run the current query from the top (or show recent items when it's empty).
@@ -58,7 +61,7 @@ final class SearchController: ObservableObject {
     private func loadPage(offset: Int, replace: Bool, gen: Int, start: Date) {
         let q = query
         let m = mode
-        let favs = favoritesOnly
+        let sc = scope
         let recent = q.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         searchQueue.async { [weak self] in
             guard let self else { return }
@@ -70,9 +73,9 @@ final class SearchController: ObservableObject {
                 return
             }
             let page = recent
-                ? engine.recent(offset: offset, limit: SearchEngine.pageSize, favoritesOnly: favs)
+                ? engine.recent(offset: offset, limit: SearchEngine.pageSize, scope: sc)
                 : engine.search(q, mode: m, offset: offset,
-                                limit: SearchEngine.pageSize, favoritesOnly: favs,
+                                limit: SearchEngine.pageSize, scope: sc,
                                 isCancelled: { !self.isCurrent(gen) })
             guard self.isCurrent(gen) else { return }
             let ms = Date().timeIntervalSince(start) * 1000
@@ -92,12 +95,20 @@ final class SearchController: ObservableObject {
     private func updateStatus() {
         let n = results.count
         if n == 0 {
-            if favoritesOnly { status = lastWasRecent ? "No favorites yet" : "No matching favorites" }
-            else { status = lastWasRecent ? "" : "No matches" }
+            switch scope {
+            case .favorites:    status = lastWasRecent ? "No favorites yet" : "No matching favorites"
+            case .group(let g): status = lastWasRecent ? "“\(g)” is empty" : "No matches in “\(g)”"
+            case .all:          status = lastWasRecent ? "" : "No matches"
+            }
             return
         }
         if lastWasRecent {
-            let label = favoritesOnly ? "favorites" : "items"
+            let label: String
+            switch scope {
+            case .favorites:    label = "favorites"
+            case .group(let g): label = "in “\(g)”"
+            case .all:          label = "items"
+            }
             status = hasMore ? "Latest \(n) \(label) (scroll for more)"
                              : "\(n) \(label) — newest first"
         } else {
@@ -121,7 +132,7 @@ final class SearchController: ObservableObject {
         searching = false
         hasMore = false
         loadingMore = false
-        favoritesOnly = false
+        scope = .all
     }
 
     // MARK: favorite / delete
@@ -132,10 +143,16 @@ final class SearchController: ObservableObject {
                      kind: r.kind, imgW: r.imgW, imgH: r.imgH, ext: r.ext)
     }
 
+    private func withList(_ r: SearchResult, _ list: String?) -> SearchResult {
+        SearchResult(pk: r.pk, text: r.text, app: r.app, list: list, created: r.created,
+                     useCount: r.useCount, source: r.source, sourcePk: r.sourcePk, favorite: r.favorite,
+                     kind: r.kind, imgW: r.imgW, imgH: r.imgH, ext: r.ext)
+    }
+
     func toggleFavorite(_ r: SearchResult) {
         let newVal = !r.favorite
         if let i = results.firstIndex(where: { $0.pk == r.pk }) {
-            if favoritesOnly && !newVal {          // unfavoriting while viewing favorites → drop it
+            if scope == .favorites && !newVal {     // unfavoriting while viewing favorites → drop it
                 results.remove(at: i)
                 if selected >= results.count { selected = max(0, results.count - 1) }
             } else {
@@ -144,6 +161,28 @@ final class SearchController: ObservableObject {
         }
         indexer?.setFavorite(pk: r.pk, newVal) {}
         updateStatus()
+    }
+
+    /// Add an entry to a named group (or remove it from its group with nil).
+    func assignGroup(_ r: SearchResult, to name: String?) {
+        if let name { groups.add(name) }
+        indexer?.setGroup(pk: r.pk, name)
+        if let i = results.firstIndex(where: { $0.pk == r.pk }) {
+            // If we're viewing a group and the entry no longer belongs, drop it.
+            if case .group(let g) = scope,
+               name?.caseInsensitiveCompare(g) != .orderedSame {
+                results.remove(at: i)
+                if selected >= results.count { selected = max(0, results.count - 1) }
+            } else {
+                results[i] = withList(results[i], name)
+            }
+        }
+        updateStatus()
+    }
+
+    /// Pull group names that exist in the database into the persisted list.
+    func refreshGroups() {
+        indexer?.fetchGroups { [weak self] names in self?.groups.merge(names) }
     }
 
     func delete(_ r: SearchResult) {
