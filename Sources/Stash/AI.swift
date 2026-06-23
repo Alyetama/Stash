@@ -72,10 +72,12 @@ struct AIService {
     let settings: AISettings
 
     private static let system = """
-    You convert a natural-language description into ONE regular expression compatible \
-    with ICU / NSRegularExpression (the engine used by Swift). Output ONLY the regex \
-    pattern itself — no delimiters, no surrounding quotes, no code fences, no flags, \
-    and no explanation.
+    You are a regex generator. Convert the user's description into ONE regular \
+    expression in ICU / NSRegularExpression syntax (the engine Swift uses). \
+    Respond IMMEDIATELY with ONLY the regex pattern on a single line — do NOT think \
+    out loud, do NOT explain, do NOT add quotes, delimiters, code fences, or flags. \
+    Keep it simple. \
+    Example — description: "email addresses" → [A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}
     """
 
     func generateRegex(from prompt: String, completion: @escaping (Result<String, Error>) -> Void) {
@@ -92,10 +94,11 @@ struct AIService {
             "temperature": 0,
             // Generous budget: several of OpenCode's free models are reasoning
             // models that spend tokens "thinking" before emitting the answer.
-            "max_tokens": 2000,
+            "max_tokens": 4000,
             "messages": [
                 ["role": "system", "content": Self.system],
-                ["role": "user", "content": prompt],
+                // The "regex:" suffix primes a direct completion (less reasoning).
+                ["role": "user", "content": "description: \(prompt)\nregex:"],
             ],
         ]
         req.httpBody = try? JSONSerialization.data(withJSONObject: body)
