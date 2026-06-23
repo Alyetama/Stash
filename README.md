@@ -84,6 +84,15 @@ Everything is **100% local** — no network access, no telemetry. Your clips nev
 - Favorites are a per-row flag; transformations run on the copied text just before it hits the clipboard; export copies the data to a clean standalone database.
 - When [Copy 'Em](https://apprywhere.com) is installed, history is imported **once** from its Core Data store, opened strictly **read-only** — your existing data is never touched.
 
+## Website
+
+The landing page in [`docs/`](docs/) is deployed to **GitHub Pages automatically** by
+[`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml) on every push
+to `main`. After your first push it goes live at `https://<user>.github.io/<repo>/`.
+
+> If Actions can't enable Pages automatically (some org settings), set it once under
+> **Settings → Pages → Source → GitHub Actions**, then re-run the workflow.
+
 ## Build from source
 
 Requires the Swift toolchain (Swift 5.9+, ships with Xcode).
