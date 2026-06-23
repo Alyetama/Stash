@@ -217,6 +217,27 @@ private struct ResultRow: View {
         result.text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    private static let linkDetector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
+
+    /// The preview text with any URLs/links coloured blue and underlined.
+    private var styledPreview: AttributedString {
+        let s = preview
+        var attr = AttributedString(s)
+        guard let detector = Self.linkDetector else { return attr }
+        let ns = s as NSString
+        let linkColor = selected ? Color.white : Color(red: 0.30, green: 0.55, blue: 1.0)
+        for m in detector.matches(in: s, range: NSRange(location: 0, length: ns.length)) {
+            guard let r = Range(m.range, in: s) else { continue }
+            let lo = s.distance(from: s.startIndex, to: r.lowerBound)
+            let hi = s.distance(from: s.startIndex, to: r.upperBound)
+            let aLo = attr.index(attr.startIndex, offsetByCharacters: lo)
+            let aHi = attr.index(attr.startIndex, offsetByCharacters: hi)
+            attr[aLo..<aHi].foregroundColor = linkColor
+            attr[aLo..<aHi].underlineStyle = .single
+        }
+        return attr
+    }
+
     private var meta: String {
         var parts: [String] = []
         if let a = result.app, !a.isEmpty { parts.append(a) }
@@ -262,10 +283,11 @@ private struct ResultRow: View {
         HStack(alignment: .top, spacing: 11) {
             leading
             VStack(alignment: .leading, spacing: 3) {
-                Text(preview)
+                Text(styledPreview)
                     .lineLimit(2)
                     .font(.system(size: 13))
                     .foregroundStyle(selected ? Color.white : Color.primary)
+                    .tint(selected ? Color.white : Color(red: 0.30, green: 0.55, blue: 1.0))
                 if !meta.isEmpty {
                     Text(meta)
                         .font(.caption2)
