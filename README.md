@@ -51,6 +51,7 @@ Everything is **local-first** — no telemetry, and your clips never leave your 
 
 - **One-click copy** — click a result (or press <kbd>↵</kbd>) to copy it and close.
 - **Favorites** — right-click a result to star it; filter to just your starred clips from the dropdown in the search bar.
+- **Named groups** — sort clips into your own named groups (right-click → *Add to Group*), then filter to any group from the dropdown. Imported Copy 'Em lists show up as groups automatically.
 - **Delete** — right-click any result to remove it from your history.
 - **Copy transformations** — the **Aa** button transforms a clip *as it's copied*: upper / lower / capitalize, single line, remove empty lines, strip or trim whitespace, and prepend / append text. Settings persist.
 
@@ -86,7 +87,8 @@ Everything is **local-first** — no telemetry, and your clips never leave your 
 | Move selection | <kbd>↑</kbd> / <kbd>↓</kbd> |
 | Copy a clip | Click it, or press <kbd>↵</kbd> (copies and closes) |
 | Favorite / delete a clip | **Right-click** the result → Add to Favorites / Delete |
-| View favorites | Open the favorites dropdown in the search bar → **Favorites** |
+| View favorites / a group | Open the dropdown in the search bar → **Favorites** or a group name |
+| Add a clip to a group | **Right-click** the result → **Add to Group** → pick one or **New group…** |
 | Transform on copy | Click the **Aa** button → toggle Upper / Lower / Trim / Prepend… |
 | Open Settings | The gear in the search bar, or right-click the menu-bar icon → **Settings** |
 | Export history | Right-click the menu-bar icon → **Export…** → choose a `.sqlite` file |
