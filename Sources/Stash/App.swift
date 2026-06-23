@@ -131,8 +131,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.indexer.importFromStore(store) { result in
                 let alert = NSAlert()
                 switch result {
-                case .success(let n):
-                    alert.messageText = "Imported \(n.formatted()) clips"
+                case .success(let r):
+                    alert.messageText = r.added == 0 && r.upgraded == 0
+                        ? "Nothing new to import"
+                        : "Imported \(r.added.formatted()) new \(r.added == 1 ? "clip" : "clips")"
+                    if r.upgraded > 0 {
+                        alert.informativeText = "Upgraded \(r.upgraded.formatted()) previously-truncated \(r.upgraded == 1 ? "entry" : "entries") to full text."
+                    } else if r.added == 0 {
+                        alert.informativeText = "Everything in that export was already in Stash."
+                    }
                 case .failure(let error):
                     alert.alertStyle = .warning
                     alert.messageText = "Import failed"

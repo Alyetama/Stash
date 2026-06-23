@@ -104,9 +104,11 @@ final class Indexer: ObservableObject {
     /// Import every text + image entry from a Copy 'Em store at `storePath`
     /// (the `Copy-em-Paste.storedata` inside a chosen `.cep` package). Explicit,
     /// appends, not gated by the one-time flags. Calls back on the main thread.
-    func importFromStore(_ storePath: String, completion: @escaping (Result<Int, Error>) -> Void) {
+    struct ImportResult { var added = 0; var upgraded = 0 }
+
+    func importFromStore(_ storePath: String, completion: @escaping (Result<ImportResult, Error>) -> Void) {
         queue.async { [weak self] in
-            func done(_ r: Result<Int, Error>) { DispatchQueue.main.async { completion(r) } }
+            func done(_ r: Result<ImportResult, Error>) { DispatchQueue.main.async { completion(r) } }
             guard let self, let sc = self.sidecar else { return }
             func fail(_ m: String) {
                 done(.failure(NSError(domain: "Stash", code: 1, userInfo: [NSLocalizedDescriptionKey: m])))
@@ -148,7 +150,7 @@ final class Indexer: ObservableObject {
                 }
 
                 // Text entries — skip exact duplicates; upgrade truncated ones to full.
-                var inBatch = 0, added = 0
+                var inBatch = 0, added = 0, upgraded = 0
                 try sc.begin()
                 try source.forEachRow(afterPK: 0) { row in
                     let h = Self.fnv1a(row.text)
@@ -159,6 +161,7 @@ final class Indexer: ObservableObject {
                             try? sc.delete(pk: oldPk)
                             truncated[ph] = nil
                             seenText.remove(ph)
+                            upgraded += 1
                         }
                     }
                     do { try sc.insertImported(row) } catch { return }
@@ -191,7 +194,7 @@ final class Indexer: ObservableObject {
                     self.indexedCount = count; self.buildDone = self.buildTotal
                     self.phase = .ready; self.message = "Ready"
                 }
-                done(.success(added))
+                done(.success(ImportResult(added: added, upgraded: upgraded)))
             } catch {
                 self.publish { self.phase = .ready; self.message = "Ready" }
                 done(.failure(error))
