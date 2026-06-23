@@ -10,6 +10,16 @@ final class AISettings: ObservableObject {
     /// OpenCode Zen — OpenAI-compatible chat-completions endpoint.
     let endpoint = "https://opencode.ai/zen/v1/chat/completions"
 
+    /// Free models OpenCode Zen offers (id used by the API, plus a friendly label).
+    struct Model: Identifiable, Hashable { let id: String; let label: String }
+    static let freeModels: [Model] = [
+        .init(id: "deepseek-v4-flash-free", label: "DeepSeek V4 Flash"),
+        .init(id: "big-pickle", label: "Big Pickle"),
+        .init(id: "mimo-v2.5-free", label: "MiMo V2.5"),
+        .init(id: "north-mini-code-free", label: "North Mini Code"),
+        .init(id: "nemotron-3-ultra-free", label: "Nemotron 3 Ultra"),
+    ]
+
     private static let keyAccount = "opencode.apiKey"
     private let d = UserDefaults.standard
 
@@ -20,7 +30,8 @@ final class AISettings: ObservableObject {
             d.removeObject(forKey: "ai.apiKey")
         }
         apiKey = Keychain.get(account: Self.keyAccount) ?? ""
-        model = d.string(forKey: "ai.model") ?? "deepseek-v4-flash-free"
+        let stored = d.string(forKey: "ai.model") ?? "deepseek-v4-flash-free"
+        model = Self.freeModels.contains(where: { $0.id == stored }) ? stored : "deepseek-v4-flash-free"
     }
 
     var enabled: Bool { !apiKey.trimmingCharacters(in: .whitespaces).isEmpty }
@@ -140,8 +151,12 @@ struct AIRegexView: View {
                         Button("Done") { editingKey = false }.buttonStyle(.link)
                     }
                 }
-                TextField("Model", text: $ai.model).textFieldStyle(.roundedBorder)
             }
+
+            Picker("Model", selection: $ai.model) {
+                ForEach(AISettings.freeModels) { Text($0.label).tag($0.id) }
+            }
+            .pickerStyle(.menu)
 
             Divider().padding(.vertical, 1)
 
