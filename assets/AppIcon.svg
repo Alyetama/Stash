@@ -1,0 +1,35 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bd" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6f61f2"/>
+      <stop offset="1" stop-color="#473ac5"/>
+    </linearGradient>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f1eefc"/>
+    </linearGradient>
+  </defs>
+
+  <!-- rounded tile (macOS squircle, 824 body centered with padding) -->
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bd)"/>
+
+  <!-- faint history cards peeking behind, centred around the front board -->
+  <rect x="408" y="288" width="296" height="388" rx="40" fill="#ffffff" opacity="0.28"/>
+  <rect x="386" y="304" width="296" height="388" rx="40" fill="#ffffff" opacity="0.55"/>
+
+  <!-- soft shadow grounding the front board -->
+  <rect x="364" y="332" width="296" height="388" rx="40" fill="#2c2280" opacity="0.18"/>
+
+  <!-- front clipboard board -->
+  <rect x="364" y="320" width="296" height="388" rx="40" fill="url(#paper)"/>
+
+  <!-- clip, centred on the board (x=512) -->
+  <rect x="456" y="292" width="112" height="58" rx="26" fill="#e4e0fb"/>
+  <rect x="479" y="270" width="66" height="42" rx="15" fill="#ffffff" stroke="#cfcaf6" stroke-width="3"/>
+
+  <!-- lines: one indigo accent, rest light -->
+  <rect x="404" y="404" width="180" height="26" rx="13" fill="#4f43d0"/>
+  <rect x="404" y="450" width="128" height="26" rx="13" fill="#cdc8f8"/>
+  <rect x="404" y="496" width="164" height="26" rx="13" fill="#cdc8f8"/>
+  <rect x="404" y="542" width="108" height="26" rx="13" fill="#cdc8f8"/>
+</svg>

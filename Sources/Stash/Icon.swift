@@ -1,28 +1,30 @@
 import AppKit
 
-/// Custom menu-bar icon: a magnifier lens containing a small stack of clipboard
-/// "entries" (lines), with a bold rounded handle. Drawn as a template image so the
-/// system tints it correctly for light/dark menu bars and Reduce-Transparency.
+/// Custom menu-bar icon: a clipboard with a top clip and a few entry lines,
+/// matching the app icon. Drawn as a template image so the system tints it
+/// correctly for light/dark menu bars and Reduce-Transparency.
 enum AppIcon {
     static func menuBar() -> NSImage {
         let size = NSSize(width: 18, height: 18)
         let image = NSImage(size: size, flipped: false) { _ in
             NSColor.black.set()
 
-            // Lens
-            let center = NSPoint(x: 7.6, y: 10.4)
-            let radius: CGFloat = 5.0
-            let lensRect = NSRect(x: center.x - radius, y: center.y - radius,
-                                  width: radius * 2, height: radius * 2)
-            let lens = NSBezierPath(ovalIn: lensRect)
-            lens.lineWidth = 1.8
-            lens.stroke()
+            // Board outline (centred on x = 9).
+            let board = NSBezierPath(roundedRect: NSRect(x: 4.6, y: 3.2, width: 8.8, height: 11.0),
+                                     xRadius: 1.9, yRadius: 1.9)
+            board.lineWidth = 1.4
+            board.stroke()
 
-            // Clipboard "entries" — three short lines inside the lens.
+            // Clip at the top.
+            let clip = NSBezierPath(roundedRect: NSRect(x: 7.25, y: 13.3, width: 3.5, height: 2.0),
+                                    xRadius: 0.7, yRadius: 0.7)
+            clip.fill()
+
+            // Entry lines inside the board.
             let lines: [(CGFloat, CGFloat, CGFloat)] = [   // (y, xStart, xEnd)
-                (11.7, 4.9, 10.4),
-                (10.2, 4.9, 9.6),
-                (8.7,  4.9, 10.1),
+                (11.4, 6.3, 11.1),
+                (9.3,  6.3, 9.9),
+                (7.2,  6.3, 10.6),
             ]
             for (y, x0, x1) in lines {
                 let p = NSBezierPath()
@@ -32,14 +34,6 @@ enum AppIcon {
                 p.lineCapStyle = .round
                 p.stroke()
             }
-
-            // Handle
-            let handle = NSBezierPath()
-            handle.move(to: NSPoint(x: 11.15, y: 6.85))
-            handle.line(to: NSPoint(x: 15.6, y: 2.4))
-            handle.lineWidth = 2.2
-            handle.lineCapStyle = .round
-            handle.stroke()
 
             return true
         }
