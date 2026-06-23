@@ -124,11 +124,11 @@
     <p class="sub">macOS 13+ · Apple Silicon &amp; Intel · summon anywhere with <span class="kbd">⌃⌥⌘C</span></p>
 
     <div class="demo">
-      <p class="hint">↓ <b>Try it</b> — type to search, switch modes, click a result to copy it.</p>
+      <p class="hint">↓ <b>Try it</b> — type a query, then switch <b>Substring / Words / Regex</b> to see how each matches differently. Click a result to copy it.</p>
       <div class="panel">
         <div class="search">
           <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="9.5" cy="9.5" r="6.5" stroke="#a3a8c8" stroke-width="2"/><line x1="14.5" y1="14.5" x2="20" y2="20" stroke="#a3a8c8" stroke-width="2" stroke-linecap="round"/></svg>
-          <input id="q" type="text" value="invoice" placeholder="Search your clipboard history…" autocomplete="off" spellcheck="false">
+          <input id="q" type="text" value="log" placeholder="Search your clipboard history…" autocomplete="off" spellcheck="false">
           <div class="seg" id="modes">
             <button data-mode="substring" class="on">Substring</button>
             <button data-mode="words">Words</button>
@@ -176,7 +176,6 @@
       <div class="step"><b>Launch it</b> from Applications or Spotlight — a magnifier icon appears in your menu bar.</div>
       <div class="step"><b>Press <span class="kbd">⌃⌥⌘C</span></b> (or left-click the icon) and start searching your clips.</div>
     </div>
-    <div class="note">⚠️ Stash is a clipboard manager, so it records <b>everything</b> you copy — including passwords and tokens. App-exclusion and a pause toggle are on the roadmap. Everything stays on your Mac; Stash has no network access.</div>
   </div>
 </section>
 
@@ -201,21 +200,27 @@
 
 <script>
 const CLIPS = [
-  {t:"Invoice #2024-0417 — Acme Corp — $4,820.00 due Apr 30", a:"Mail", l:"Receipts", w:"2h ago", u:3},
-  {t:"https://billing.example.com/invoices/2024/q1/summary.pdf", a:"Safari", w:"yesterday"},
-  {t:"INVOICE_2024_FINAL_v3.numbers", a:"Finder", w:"3 days ago"},
-  {t:"Re: 2024 invoice approvals — please sign by EOD", a:"Slack", w:"last week"},
-  {t:"git rebase -i HEAD~4", a:"iTerm", l:"snippets", w:"1h ago", u:11},
-  {t:"ffmpeg -i input.mov -vcodec h264 -crf 20 out.mp4", a:"iTerm", l:"ffmpeg", w:"5h ago", u:7},
-  {t:"sk-proj-9f2a...REDACTED...c41b", a:"VS Code", l:"tokens", w:"2 days ago"},
-  {t:"The quick brown fox jumps over the lazy dog", a:"Notes", w:"4 days ago"},
-  {t:"192.168.1.42:5432  postgres://stash@localhost/db", a:"TablePlus", w:"6h ago"},
-  {t:"meeting notes — ship Stash v1.0, write the README, record demo", a:"Obsidian", l:"todo", w:"30m ago", u:2},
-  {t:"SELECT * FROM entries WHERE text MATCH ? ORDER BY bm25(fts);", a:"DataGrip", l:"snippets", w:"yesterday"},
-  {t:"álbum café naïve résumé — diacritics test", a:"Pages", w:"1 week ago"},
-  {t:"+1 (415) 555-0182", a:"Contacts", w:"3h ago"},
+  {t:"https://blog.example.com/2024/clipboard-tips", a:"Safari", w:"2h ago"},
+  {t:"login token refreshed for stash@local", a:"Terminal", l:"tokens", w:"15m ago", u:4},
+  {t:"product catalog Q2 — 412 SKUs", a:"Numbers", w:"yesterday"},
+  {t:"tail -f /var/log/system.log", a:"iTerm", l:"snippets", w:"1h ago", u:9},
+  {t:"logs cleared: 1,204 entries archived", a:"Console", w:"3h ago"},
+  {t:"Order #PO-2024-0417 shipped via UPS", a:"Mail", l:"Receipts", w:"4h ago", u:2},
+  {t:"Invoice due 2024-04-30 — Acme Corp", a:"Mail", l:"Receipts", w:"yesterday"},
+  {t:"Release 2023-11 notes: perf + bug fixes", a:"Slack", w:"last week"},
+  {t:"git rebase -i HEAD~4", a:"iTerm", l:"snippets", w:"6h ago", u:11},
+  {t:"billing@acme.com", a:"Contacts", w:"2 days ago"},
   {t:"https://github.com/yourname/Stash", a:"Safari", w:"just now", u:1},
+  {t:"The quick brown fox jumps over the lazy dog", a:"Notes", w:"5 days ago"},
+  {t:"SELECT * FROM clips ORDER BY created DESC;", a:"DataGrip", l:"snippets", w:"3 days ago"},
+  {t:"+1 (415) 555-0182", a:"Contacts", w:"1 week ago"},
 ];
+
+// Each mode loads an example showcasing it:
+//  substring "log" -> matches anywhere (blog, catalog, login, logs, /var/log)
+//  words     "log" -> only word-starts (login, logs, log) — excludes blog & catalog
+//  regex \d{4}-\d{2} -> pattern match on dates / order numbers
+const EXAMPLES = { substring:'log', words:'log', regex:'\\d{4}-\\d{2}' };
 
 const q = document.getElementById('q');
 const modesEl = document.getElementById('modes');
@@ -227,31 +232,38 @@ let sel = 0;
 let view = [];
 
 const esc = s => s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const escRe = t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+function buildHL(query){
+  const qq = query.trim(); if(!qq) return null;
+  try{
+    if(mode==='regex') return new RegExp('('+qq+')','ig');
+    const terms = qq.split(/\s+/).filter(Boolean).map(escRe);
+    return terms.length ? new RegExp('('+terms.join('|')+')','ig') : null;
+  }catch(e){ return null; }
+}
 
 function highlight(text, query){
-  if(mode==='regex' || !query.trim()) return esc(text);
-  const terms = query.trim().split(/\s+/).filter(Boolean).map(t=>t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));
-  if(!terms.length) return esc(text);
-  const re = new RegExp('('+terms.join('|')+')','ig');
+  const re = buildHL(query); if(!re) return esc(text);
   let out='', last=0, m; re.lastIndex=0;
   while((m=re.exec(text))!==null){
+    if(!m[0]){ re.lastIndex++; continue; }
     out += esc(text.slice(last,m.index)) + '<mark>'+esc(m[0])+'</mark>';
     last = m.index + m[0].length;
-    if(m.index===re.lastIndex) re.lastIndex++;
   }
   return out + esc(text.slice(last));
 }
 
 function matches(text, query){
-  const q = query.trim();
-  if(!q) return true;
-  if(mode==='substring') return text.toLowerCase().includes(q.toLowerCase());
+  const qq = query.trim();
+  if(!qq) return true;
+  if(mode==='substring') return text.toLowerCase().includes(qq.toLowerCase());
   if(mode==='words'){
     const words = text.toLowerCase().split(/[^a-z0-9]+/);
-    return q.toLowerCase().split(/\s+/).filter(Boolean)
+    return qq.toLowerCase().split(/\s+/).filter(Boolean)
             .every(tok => words.some(w => w.startsWith(tok)));
   }
-  try { return new RegExp(q,'i').test(text); } catch(e){ return false; }
+  try { return new RegExp(qq,'i').test(text); } catch(e){ return false; }
 }
 
 function render(){
@@ -259,11 +271,10 @@ function render(){
   view = CLIPS.filter(c => matches(c.t, q.value));
   const ms = (performance.now()-t0);
   if(sel >= view.length) sel = 0;
-
   if(!view.length){
     resultsEl.innerHTML = '<div class="empty">No matches'+(mode==='regex'?' — check your pattern':'')+'</div>';
   } else {
-    resultsEl.innerHTML = view.map((c,i)=>{
+    resultsEl.innerHTML = view.map(function(c,i){
       const meta = [c.a, c.l?('⌗ '+c.l):null, c.w, c.u?(c.u+'×'):null].filter(Boolean).join('  ·  ');
       return '<div class="row'+(i===sel?' sel':'')+'" data-i="'+i+'"><div class="t">'+highlight(c.t,q.value)+
              '</div><div class="m">'+esc(meta)+'</div></div>';
@@ -271,35 +282,36 @@ function render(){
   }
   const n = view.length;
   countEl.textContent = q.value.trim()
-      ? n+' result'+(n===1?'':'s')+' · '+(ms<0.1?'<0.1':ms.toFixed(1))+' ms'
+      ? n+' result'+(n===1?'':'s')+' · '+(ms<0.1?'<0.1':ms.toFixed(1))+' ms · '+mode
       : n+' clips — newest first';
 }
 
 function copy(i){
   const c = view[i]; if(!c) return;
-  navigator.clipboard && navigator.clipboard.writeText(c.t).catch(()=>{});
+  if(navigator.clipboard) navigator.clipboard.writeText(c.t).catch(function(){});
   toast.textContent = 'Copied: '+ (c.t.length>40 ? c.t.slice(0,40)+'…' : c.t);
   toast.classList.add('show');
-  clearTimeout(copy._t); copy._t = setTimeout(()=>toast.classList.remove('show'), 1400);
+  clearTimeout(copy._t); copy._t = setTimeout(function(){ toast.classList.remove('show'); }, 1400);
 }
 
-q.addEventListener('input', ()=>{ sel=0; render(); });
-q.addEventListener('keydown', e=>{
+q.addEventListener('input', function(){ sel=0; render(); });
+q.addEventListener('keydown', function(e){
   if(e.key==='ArrowDown'){ e.preventDefault(); sel=Math.min(sel+1,view.length-1); render(); scrollSel(); }
   else if(e.key==='ArrowUp'){ e.preventDefault(); sel=Math.max(sel-1,0); render(); scrollSel(); }
   else if(e.key==='Enter'){ e.preventDefault(); copy(sel); }
 });
 function scrollSel(){ const r=resultsEl.querySelector('.row.sel'); if(r) r.scrollIntoView({block:'nearest'}); }
 
-resultsEl.addEventListener('click', e=>{
+resultsEl.addEventListener('click', function(e){
   const row = e.target.closest('.row'); if(!row) return;
   sel = +row.dataset.i; render(); copy(sel);
 });
 
-modesEl.addEventListener('click', e=>{
+modesEl.addEventListener('click', function(e){
   const b = e.target.closest('button'); if(!b) return;
   mode = b.dataset.mode;
-  [...modesEl.children].forEach(x=>x.classList.toggle('on', x===b));
+  Array.prototype.forEach.call(modesEl.children, function(x){ x.classList.toggle('on', x===b); });
+  q.value = EXAMPLES[mode];
   sel=0; render();
 });
 
