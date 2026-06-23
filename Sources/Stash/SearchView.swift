@@ -251,21 +251,22 @@ struct SearchView: View {
     // MARK: footer
 
     private var footer: some View {
-        HStack(spacing: 8) {
-            // Total clips, always shown.
-            Text("\(indexer.indexedCount.formatted()) clips")
-                .font(.caption).foregroundStyle(.secondary)
-                .lineLimit(1).fixedSize()
-            // Dynamic status (result count / timing) — full layout only.
-            if !compact, !controller.status.isEmpty {
-                Text("· \(controller.status)")
-                    .font(.caption).foregroundStyle(.tertiary)
+        VStack(alignment: .leading, spacing: 2) {
+            // Total clip count, on top.
+            Text("\(indexer.indexedCount.formatted()) clips total")
+                .font(.caption2).foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                Text(controller.status.isEmpty
+                     ? "\(indexer.indexedCount.formatted()) indexed"
+                     : controller.status)
+                    .font(.caption).foregroundStyle(.secondary)
                     .lineLimit(1)
+                Spacer(minLength: 8)
+                // Same hint as before; shrinks to stay on one line when compact.
+                Text("click or ↵ copies · ↑↓ navigate · esc close")
+                    .font(.caption).foregroundStyle(.tertiary)
+                    .lineLimit(1).minimumScaleFactor(0.6)
             }
-            Spacer(minLength: 8)
-            Text(compact ? "↵ copy · esc close" : "click or ↵ copies · ↑↓ navigate · esc close")
-                .font(.caption).foregroundStyle(.tertiary)
-                .lineLimit(1).fixedSize()
         }
         .padding(.horizontal, compact ? 12 : 16)
         .padding(.vertical, 8)
