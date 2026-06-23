@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 
 @main
 struct StashApp: App {
@@ -69,6 +70,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         sync.isEnabled = false
         menu.addItem(sync)
 
+        let exportItem = NSMenuItem(title: "Export…", action: #selector(exportData), keyEquivalent: "e")
+        exportItem.target = self
+        menu.addItem(exportItem)
+
         if indexer.copyEmAvailable {
             let importItem = NSMenuItem(title: "Import from Copy 'Em", action: #selector(importCopyEm), keyEquivalent: "")
             importItem.target = self
@@ -104,6 +109,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func openSearch() { panelController.show() }
     @objc private func importCopyEm() { indexer.importFromCopyEm() }
     @objc private func quit() { NSApp.terminate(nil) }
+
+    @objc private func exportData() {
+        let panel = NSSavePanel()
+        panel.title = "Export clipboard history"
+        panel.message = "Export your clipboard history to a standalone SQLite database."
+        panel.allowedContentTypes = [UTType(filenameExtension: "sqlite") ?? .database]
+        panel.canCreateDirectories = true
+        let stamp = DateFormatter()
+        stamp.dateFormat = "yyyy-MM-dd"
+        panel.nameFieldStringValue = "Stash Export \(stamp.string(from: Date())).sqlite"
+
+        NSApp.activate(ignoringOtherApps: true)
+        panel.begin { [weak self] response in
+            guard response == .OK, let url = panel.url else { return }
+            self?.indexer.export(to: url) { result in
+                let alert = NSAlert()
+                switch result {
+                case .success(let n):
+                    alert.messageText = "Exported \(n.formatted()) clips"
+                    alert.informativeText = url.path
+                case .failure(let error):
+                    alert.alertStyle = .warning
+                    alert.messageText = "Export failed"
+                    alert.informativeText = "\(error)"
+                }
+                NSApp.activate(ignoringOtherApps: true)
+                alert.runModal()
+            }
+        }
+    }
 
     func showPanel() { panelController.show() }
 }

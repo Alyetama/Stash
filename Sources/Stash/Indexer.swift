@@ -140,6 +140,52 @@ final class Indexer: ObservableObject {
         }
     }
 
+    // MARK: - export
+
+    /// Export the whole clipboard history to a standalone SQLite database at `url`
+    /// (a clean `clips` table — no FTS internals). Calls back on the main thread.
+    func export(to url: URL, completion: @escaping (Result<Int, Error>) -> Void) {
+        queue.async { [weak self] in
+            func done(_ r: Result<Int, Error>) { DispatchQueue.main.async { completion(r) } }
+            guard let self, let sc = self.sidecar else {
+                done(.failure(NSError(domain: "Stash", code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "History isn't ready yet."])))
+                return
+            }
+            do {
+                try? FileManager.default.removeItem(at: url)
+                let escaped = url.path.replacingOccurrences(of: "'", with: "''")
+                try sc.db.exec("ATTACH DATABASE '\(escaped)' AS exp;")
+                do {
+                    try sc.db.exec("""
+                        CREATE TABLE exp.clips(
+                            id           INTEGER PRIMARY KEY,
+                            text         TEXT,
+                            app          TEXT,
+                            list         TEXT,
+                            created_unix REAL,
+                            created_iso  TEXT,
+                            usecount     INTEGER,
+                            source       TEXT
+                        );
+                        INSERT INTO exp.clips(id, text, app, list, created_unix, created_iso, usecount, source)
+                        SELECT pk, text, app, list, created,
+                               datetime(created, 'unixepoch'), usecount, source
+                        FROM entries ORDER BY created;
+                    """)
+                    let n = Int(try sc.db.scalarInt("SELECT COUNT(*) FROM exp.clips") ?? 0)
+                    try sc.db.exec("DETACH DATABASE exp;")
+                    done(.success(n))
+                } catch {
+                    try? sc.db.exec("DETACH DATABASE exp;")
+                    throw error
+                }
+            } catch {
+                done(.failure(error))
+            }
+        }
+    }
+
     // MARK: - helpers
 
     private func fail(_ error: Error) {

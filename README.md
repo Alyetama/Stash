@@ -34,6 +34,7 @@ Most clipboard managers grind to a halt once your history grows large — their 
 - 🖱️ **One-click copy** — click a result (or press <kbd>↵</kbd>) to copy it and close.
 - ⌨️ **Global hotkey** — <kbd>⌃</kbd><kbd>⌥</kbd><kbd>⌘</kbd><kbd>C</kbd> from anywhere.
 - 🧭 **Menu bar native** — left-click opens search, right-click for the menu. No Dock clutter.
+- 💾 **Export** — save your entire history to a standalone SQLite database (a clean `clips` table) for backup or analysis.
 - 📦 **Optional Copy 'Em import** — already use [Copy 'Em](https://apprywhere.com)? Stash imports your existing history once, **read-only** (it never modifies Copy 'Em's data). On machines without it, this step is simply skipped.
 
 ## Install
@@ -56,6 +57,7 @@ Most clipboard managers grind to a halt once your history grows large — their 
 | Move selection | <kbd>↑</kbd> / <kbd>↓</kbd> |
 | Copy a clip | Click it, or press <kbd>↵</kbd> (copies and closes) |
 | Dismiss | <kbd>Esc</kbd>, or click away |
+| Export history | Right-click the icon → **Export…** → choose a `.sqlite` file |
 | Menu (count, import, quit) | Right-click the menu-bar icon |
 
 ## How it works
