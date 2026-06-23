@@ -21,8 +21,16 @@ cp "$BIN" "$APP_DIR/Contents/MacOS/Stash"
 cp "Sources/Stash/Resources/Info.plist" "$APP_DIR/Contents/Info.plist"
 cp "Sources/Stash/Resources/AppIcon.icns" "$APP_DIR/Contents/Resources/AppIcon.icns"
 
-echo "==> Ad-hoc code signing…"
-codesign --force --deep --sign - "$APP_DIR"
+# Prefer the stable self-signed identity (run ./setup-signing.sh once) so the
+# signature doesn't change every build — keeps the Keychain from re-prompting.
+SIGN_ID="Stash Code Signing"
+if security find-certificate -c "$SIGN_ID" >/dev/null 2>&1; then
+    echo "==> Code signing with '$SIGN_ID'…"
+    codesign --force --deep --sign "$SIGN_ID" "$APP_DIR"
+else
+    echo "==> Ad-hoc code signing (run ./setup-signing.sh for a stable signature)…"
+    codesign --force --deep --sign - "$APP_DIR"
+fi
 
 echo ""
 echo "✅ Built: $APP_DIR"
