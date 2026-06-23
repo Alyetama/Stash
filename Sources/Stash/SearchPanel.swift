@@ -52,6 +52,7 @@ final class PanelController: NSObject, NSWindowDelegate {
     private let controller: SearchController
     private let indexer: Indexer
     var onOpenSettings: (() -> Void)?
+    var onDeleteGroup: ((String) -> Void)?
     /// Returns the menu-bar status item's frame in screen coordinates, used to
     /// anchor the compact panel under the icon.
     var statusButtonRect: (() -> NSRect?)?
@@ -130,6 +131,7 @@ final class PanelController: NSObject, NSWindowDelegate {
                               theme: controller.theme,
                               groups: controller.groups,
                               onOpenSettings: { [weak self] in self?.onOpenSettings?() },
+                              onDeleteGroup: { [weak self] name in self?.onDeleteGroup?(name) },
                               onHoldChange: { [weak self] hold in
                                   guard let self else { return }
                                   if hold {

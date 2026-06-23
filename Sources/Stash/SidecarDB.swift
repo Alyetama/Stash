@@ -228,6 +228,30 @@ final class SidecarDB {
         s.bind(2, pk); _ = try? s.step()
     }
 
+    /// Unassign every entry from a group (keeps the clips, clears their `list`).
+    func clearList(_ name: String) {
+        guard let s = try? db.prepare("UPDATE entries SET list = NULL WHERE list = ?") else { return }
+        defer { s.finalize() }
+        s.bind(1, name); _ = try? s.step()
+    }
+
+    /// Image entries (pk, ext) in a group — so the caller can remove their files.
+    func imageEntriesInList(_ name: String) -> [(Int64, String)] {
+        guard let s = try? db.prepare("SELECT pk, ext FROM entries WHERE list = ? AND kind = 'image'") else { return [] }
+        defer { s.finalize() }
+        s.bind(1, name)
+        var out: [(Int64, String)] = []
+        while (try? s.step()) == true { out.append((s.int(0), s.string(1) ?? "png")) }
+        return out
+    }
+
+    /// Delete every entry in a group (FTS rows are removed by the AFTER DELETE trigger).
+    func deleteByList(_ name: String) {
+        guard let s = try? db.prepare("DELETE FROM entries WHERE list = ?") else { return }
+        defer { s.finalize() }
+        s.bind(1, name); _ = try? s.step()
+    }
+
     /// Distinct non-empty group names currently in use.
     func distinctLists() -> [String] {
         guard let s = try? db.prepare("SELECT DISTINCT list FROM entries WHERE list IS NOT NULL AND list <> '' ORDER BY list COLLATE NOCASE") else { return [] }

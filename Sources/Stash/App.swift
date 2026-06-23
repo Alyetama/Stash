@@ -41,6 +41,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         panelController.onOpenSettings = { [weak self] in self?.settingsWindow.show() }
+        panelController.onDeleteGroup = { [weak self] name in self?.confirmDeleteGroup(name) }
         panelController.statusButtonRect = { [weak self] in
             guard let button = self?.statusItem.button, let win = button.window else { return nil }
             return win.convertToScreen(button.convert(button.bounds, to: nil))
@@ -171,6 +172,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 NSApp.activate(ignoringOtherApps: true)
                 alert.runModal()
             }
+        }
+    }
+
+    /// Confirm deleting a group, offering to keep or delete its clips.
+    private func confirmDeleteGroup(_ name: String) {
+        // Hold the panel open while the modal alert is up (it would otherwise dismiss).
+        panelController.holdOpen = true
+        defer { DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in self?.panelController.holdOpen = false } }
+
+        let alert = NSAlert()
+        alert.messageText = "Delete the group “\(name)”?"
+        alert.informativeText = "Keep the clips in this group (just remove the group), or delete the clips too. This can't be undone."
+        alert.addButton(withTitle: "Delete Group Only")      // .alertFirstButtonReturn
+        alert.addButton(withTitle: "Delete Group & Clips")   // .alertSecondButtonReturn
+        alert.addButton(withTitle: "Cancel")                 // .alertThirdButtonReturn
+        // Mark the destructive option.
+        alert.buttons[1].hasDestructiveAction = true
+
+        NSApp.activate(ignoringOtherApps: true)
+        let choice = alert.runModal()
+        guard choice != .alertThirdButtonReturn else { return }
+        let deletingClips = (choice == .alertSecondButtonReturn)
+
+        indexer.deleteGroup(name, deletingClips: deletingClips) { [weak self] in
+            guard let self else { return }
+            self.controller.groups.remove(name)
+            if self.controller.scope == .group(name) { self.controller.scope = .all }
+            self.controller.refreshGroups()
+            self.controller.runSearch()
         }
     }
 

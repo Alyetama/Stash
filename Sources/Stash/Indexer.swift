@@ -303,6 +303,27 @@ final class Indexer: ObservableObject {
         }
     }
 
+    /// Delete a group. If `deletingClips` is false, the clips are kept and just
+    /// unassigned; if true, the clips (and any image files) are removed too.
+    func deleteGroup(_ name: String, deletingClips: Bool, completion: @escaping () -> Void = {}) {
+        queue.async { [weak self] in
+            guard let self, let sc = self.sidecar else { return }
+            if deletingClips {
+                let imgs = sc.imageEntriesInList(name)
+                sc.deleteByList(name)
+                for (pk, ext) in imgs {
+                    try? FileManager.default.removeItem(atPath: Sidecar.imageFile(pk: pk, ext: ext))
+                    try? FileManager.default.removeItem(atPath: Sidecar.thumbFile(pk: pk))
+                }
+                let count = Int((try? sc.count()) ?? 0)
+                self.publish { self.indexedCount = count }
+            } else {
+                sc.clearList(name)
+            }
+            DispatchQueue.main.async(execute: completion)
+        }
+    }
+
     /// Fetch the distinct group names currently in use (e.g. to surface imported lists).
     func fetchGroups(completion: @escaping ([String]) -> Void) {
         queue.async { [weak self] in
