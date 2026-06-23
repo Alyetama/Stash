@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// Persisted settings for the optional AI-assisted regex feature.
-/// The key is the user's own OpenCode API key, stored locally in UserDefaults.
+/// The key is the user's own OpenCode API key, stored in the macOS Keychain
+/// (only the non-secret model choice lives in UserDefaults).
 final class AISettings: ObservableObject {
     /// Whether a key is saved — determined by a prompt-free existence check, NOT
     /// by reading the secret, so the app never shows a Keychain prompt at launch.
