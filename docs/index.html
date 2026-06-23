@@ -103,13 +103,15 @@
       </linearGradient>
     </defs>
     <rect x="100" y="100" width="824" height="824" rx="186" fill="url(#stashbg)"/>
-    <g fill="none" stroke="#fff" stroke-linecap="round">
-      <circle cx="452" cy="464" r="176" stroke-width="50"/>
-      <path d="M578 592 L726 724" stroke-width="64"/>
-      <path d="M372 396 H560" stroke-width="34"/>
-      <path d="M372 464 H520" stroke-width="34"/>
-      <path d="M372 532 H548" stroke-width="34"/>
-    </g>
+    <rect x="388" y="288" width="296" height="388" rx="40" fill="#ffffff" opacity=".28"/>
+    <rect x="370" y="304" width="296" height="388" rx="40" fill="#ffffff" opacity=".55"/>
+    <rect x="352" y="320" width="296" height="388" rx="40" fill="#ffffff"/>
+    <rect x="444" y="292" width="112" height="58" rx="26" fill="#e4e0fb"/>
+    <rect x="467" y="270" width="66" height="42" rx="15" fill="#ffffff" stroke="#cfcaf6" stroke-width="3"/>
+    <rect x="392" y="404" width="180" height="26" rx="13" fill="#4f43d0"/>
+    <rect x="392" y="450" width="128" height="26" rx="13" fill="#cdc8f8"/>
+    <rect x="392" y="496" width="164" height="26" rx="13" fill="#cdc8f8"/>
+    <rect x="392" y="542" width="108" height="26" rx="13" fill="#cdc8f8"/>
   </symbol>
 </svg>
 
@@ -158,18 +160,19 @@
     <h2>Everything you copy, instantly findable</h2>
     <p class="lead">Stash quietly records your clipboard and indexes it with SQLite FTS5, so search never slows down — no matter how much history you accumulate.</p>
     <div class="grid">
-      <div class="feat"><div class="ico">📋</div><h3>Live capture</h3><p>Every text clip is saved automatically, tagged with the app it came from and when.</p></div>
-      <div class="feat"><div class="ico">⚡</div><h3>Three search modes</h3><p>Substring "contains", relevance-ranked word search, and full regular expressions.</p></div>
-      <div class="feat"><div class="ico">🕘</div><h3>Recent first</h3><p>Opens to your latest clips. Start typing to search; clear to go back to recent.</p></div>
-      <div class="feat"><div class="ico">🖱️</div><h3>One-click copy</h3><p>Click a result or press Return to copy it and close. Paste with ⌘V anywhere.</p></div>
-      <div class="feat"><div class="ico">⌨️</div><h3>Global hotkey</h3><p>Summon the search bar from any app with ⌃⌥⌘C. No Dock icon, no clutter.</p></div>
-      <div class="feat"><div class="ico">✨</div><h3>AI regex (opt-in)</h3><p>Add an OpenCode API key and describe a pattern in plain English — a free fast model writes the regex and runs the search.</p></div>
-      <div class="feat"><div class="ico">🖼️</div><h3>Image previews</h3><p>Copied images are captured too — shown as thumbnails in results. Pick one to copy the image back.</p></div>
-      <div class="feat"><div class="ico">🔤</div><h3>Copy transformations</h3><p>Upper/lower/capitalize, trim or strip whitespace, single-line, or prepend/append text — applied as you copy.</p></div>
-      <div class="feat"><div class="ico">⭐</div><h3>Favorites &amp; cleanup</h3><p>Right-click any result to favorite or delete it. Filter the view to just your starred clips.</p></div>
-      <div class="feat"><div class="ico">🎨</div><h3>Native &amp; polished</h3><p>A frosted translucent panel, rounded accent selection, per-app color badges, and smooth hover states — feels right at home on macOS.</p></div>
-      <div class="feat"><div class="ico">💾</div><h3>Export anywhere</h3><p>Save your whole history to a standalone SQLite database for backup or analysis.</p></div>
-      <div class="feat"><div class="ico">📦</div><h3>Copy 'Em import</h3><p>Already use Copy 'Em? Your history is imported once, strictly read-only.</p></div>
+      <div class="feat"><h3>Live capture</h3><p>Every text clip is saved automatically, tagged with the source app and time — with the app's real icon shown on each entry.</p></div>
+      <div class="feat"><h3>Three search modes</h3><p>Substring "contains", relevance-ranked word search, and full regular expressions — switch on the fly.</p></div>
+      <div class="feat"><h3>Recent first</h3><p>Opens to your latest clips. Start typing to search; clear to go back to recent.</p></div>
+      <div class="feat"><h3>Images and GIFs</h3><p>Copied images are captured as thumbnails; GIFs show a still first frame. PNG, JPEG, WebP, AVIF, HEIC and more, each labeled by format.</p></div>
+      <div class="feat"><h3>Smart duplicates</h3><p>Re-copying something already saved moves it to the top instead of duplicating — or keep every copy if you prefer.</p></div>
+      <div class="feat"><h3>One-click copy</h3><p>Click a result or press Return to copy it and close. Paste with Cmd-V anywhere.</p></div>
+      <div class="feat"><h3>Customizable hotkey</h3><p>Summon the search bar from any app. Default is Ctrl-Opt-Cmd-C, and you can record your own.</p></div>
+      <div class="feat"><h3>AI regex (opt-in)</h3><p>Add an OpenCode API key and describe a pattern in plain English — a free model writes the regex and runs the search.</p></div>
+      <div class="feat"><h3>Copy transformations</h3><p>Upper/lower/capitalize, trim or strip whitespace, single-line, or prepend/append text — applied as you copy.</p></div>
+      <div class="feat"><h3>Favorites and cleanup</h3><p>Right-click any result to favorite or delete it. Filter the view to just your starred clips.</p></div>
+      <div class="feat"><h3>Compact or centered</h3><p>Open as a centered Spotlight-style window, or a compact dropdown anchored under the menu-bar icon.</p></div>
+      <div class="feat"><h3>Themes</h3><p>System (frosted), Midnight (indigo and violet), and One Dark — choose your look in Settings.</p></div>
+      <div class="feat"><h3>Export and import</h3><p>Save your whole history to a standalone SQLite database, or import once from a Copy 'Em export, strictly read-only.</p></div>
     </div>
   </div>
 </section>
@@ -179,7 +182,7 @@
     <h2>Get started in seconds</h2>
     <div class="steps">
       <div class="step"><b>Download &amp; open</b> the disk image, then drag <b>Stash</b> onto Applications.</div>
-      <div class="step"><b>Launch it</b> from Applications or Spotlight — a magnifier icon appears in your menu bar.</div>
+      <div class="step"><b>Launch it</b> from Applications or Spotlight — a clipboard icon appears in your menu bar.</div>
       <div class="step"><b>Press <span class="kbd">⌃⌥⌘C</span></b> (or left-click the icon) and start searching your clips.</div>
     </div>
   </div>
@@ -189,7 +192,7 @@
   <div class="wrap">
     <h2>Build from source</h2>
     <p class="lead">Requires the Swift toolchain (ships with Xcode).</p>
-    <pre><code>git clone &lt;your-repo-url&gt; Stash &amp;&amp; cd Stash
+    <pre><code>git clone https://github.com/Alyetama/Stash.git Stash &amp;&amp; cd Stash
 ./build.sh        # builds + installs to /Applications
 ./make-dmg.sh     # builds + packages dist/Stash.dmg</code></pre>
   </div>
