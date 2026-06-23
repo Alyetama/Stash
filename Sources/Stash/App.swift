@@ -150,6 +150,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let keepDuplicates = (choice == .alertSecondButtonReturn)
 
             self.indexer.importFromStore(store, keepDuplicates: keepDuplicates) { result in
+                // Surface any imported Copy 'Em lists as groups right away.
+                self.controller.refreshGroups()
                 let alert = NSAlert()
                 switch result {
                 case .success(let r):
