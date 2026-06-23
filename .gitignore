@@ -18,6 +18,8 @@ build/
 # (the released disk image under dist/ and docs/ is committed on purpose)
 *.app/
 *.iconset/
+*.dSYM/
+*.dmg.tmp
 
 # ───────── macOS ─────────
 .DS_Store
