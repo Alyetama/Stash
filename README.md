@@ -57,7 +57,7 @@ Everything is **local-first** — no telemetry, and your clips never leave your 
 **Interface**
 
 - **Two panel layouts** — a centered, Spotlight-style window, or a **compact dropdown** anchored right under the menu-bar icon (toggle in Settings).
-- **Themes** — System (frosted), Midnight (indigo/violet), and One Dark.
+- **Themes** — System (frosted), Midnight, One Dark, Dracula, Nord, and Tokyo Night.
 - **Global hotkey** — summon from any app with <kbd>⌃</kbd><kbd>⌥</kbd><kbd>C</kbd>, fully **customizable** in Settings.
 - **Menu-bar native** — left-click opens search, right-click for the menu. No Dock clutter (LSUIElement agent app).
 
@@ -96,7 +96,7 @@ Everything is **local-first** — no telemetry, and your clips never leave your 
 
 Open Settings from the gear in the search bar, or the menu-bar menu.
 
-- **Theme** — System, Midnight, or One Dark.
+- **Theme** — System, Midnight, One Dark, Dracula, Nord, or Tokyo Night.
 - **Launch at login** — register Stash as a login item.
 - **Pause clipboard capture** — temporarily stop recording new clips.
 - **Open under the menu bar (compact)** — drop the panel down from the icon in a narrower layout instead of centered on screen.
@@ -143,7 +143,7 @@ Sources/Stash/
   SearchPanel.swift      Floating panel + compact dropdown + search field
   SearchView.swift       SwiftUI search UI (results, app icons, context menu)
   Settings.swift         Settings window (theme, login, shortcut, AI, data)
-  Theme.swift            Themes: System, Midnight, One Dark
+  Theme.swift            Themes: System, Midnight, One Dark, Dracula, Nord, Tokyo Night
   Transforms.swift       Copy-transformation settings + popover
   AI.swift               OpenCode regex generation (Keychain-backed key)
   Keychain.swift         Keychain wrapper for the API key
