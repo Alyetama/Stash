@@ -31,87 +31,101 @@ struct SettingsView: View {
     }
 
     var body: some View {
-        Form {
-            Section("General") {
-                Picker("Theme", selection: $theme.theme) {
-                    ForEach(AppTheme.allCases) { Text($0.label).tag($0) }
+        HStack(alignment: .top, spacing: 0) {
+            // Left column.
+            Form {
+                Section("General") {
+                    Picker("Theme", selection: $theme.theme) {
+                        ForEach(AppTheme.allCases) { Text($0.label).tag($0) }
+                    }
+                    Toggle("Launch Stash at login", isOn: $launchAtLogin)
+                        .onChange(of: launchAtLogin) { LoginItem.set($0) }
+                    Toggle("Pause clipboard capture", isOn: $indexer.capturePaused)
+                    Toggle("Open under the menu bar (compact)", isOn: $compactPanel)
+                    Text(compactPanel
+                         ? "The search panel drops down from the menu-bar icon in a smaller layout."
+                         : "The search panel opens centered on screen (Spotlight-style).")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Toggle("Keep duplicate clips", isOn: $indexer.keepDuplicates)
+                    Text(indexer.keepDuplicates
+                         ? "Every copy is saved as a separate entry."
+                         : "Re-copying something already saved moves it to the top instead of duplicating.")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
-                Toggle("Launch Stash at login", isOn: $launchAtLogin)
-                    .onChange(of: launchAtLogin) { LoginItem.set($0) }
-                Toggle("Pause clipboard capture", isOn: $indexer.capturePaused)
-                Toggle("Open under the menu bar (compact)", isOn: $compactPanel)
-                Text(compactPanel
-                     ? "The search panel drops down from the menu-bar icon in a smaller layout."
-                     : "The search panel opens centered on screen (Spotlight-style).")
-                    .font(.caption).foregroundStyle(.secondary)
-                Toggle("Keep duplicate clips", isOn: $indexer.keepDuplicates)
-                Text(indexer.keepDuplicates
-                     ? "Every copy is saved as a separate entry."
-                     : "Re-copying something already saved moves it to the top instead of duplicating.")
-                    .font(.caption).foregroundStyle(.secondary)
-                Toggle("Enable global shortcut", isOn: $hotkey.enabled)
-                LabeledContent("Global shortcut") {
-                    HStack(spacing: 8) {
-                        ShortcutField(display: hotkey.display) { code, mods, disp in
-                            hotkey.set(keyCode: code, modifiers: mods, display: disp)
+
+                Section("Shortcut") {
+                    Toggle("Enable global shortcut", isOn: $hotkey.enabled)
+                    LabeledContent("Shortcut") {
+                        HStack(spacing: 8) {
+                            ShortcutField(display: hotkey.display) { code, mods, disp in
+                                hotkey.set(keyCode: code, modifiers: mods, display: disp)
+                            }
+                            .frame(width: 120, height: 22)
+                            Button("Reset") { hotkey.reset() }
                         }
-                        .frame(width: 120, height: 22)
-                        Button("Reset") { hotkey.reset() }
+                    }
+                    .disabled(!hotkey.enabled)
+                    Text(hotkey.enabled
+                         ? "Click the shortcut, then press a new combo (must include ⌘, ⌃, or ⌥)."
+                         : "The shortcut is off — open Stash by clicking the menu-bar icon.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            .formStyle(.grouped)
+            .frame(width: 330)
+            .scrollDisabled(true)
+            .fixedSize(horizontal: false, vertical: true)
+
+            // Right column.
+            Form {
+                Section("AI regex (OpenCode)") {
+                    if ai.hasKey && !editingKey {
+                        HStack {
+                            Label("API key set", systemImage: "key.fill").foregroundStyle(.green)
+                            Spacer()
+                            Button("Change") { keyInput = ""; showKey = false; editingKey = true }
+                            Button("Remove", role: .destructive) { ai.setKey("") }
+                        }
+                    } else {
+                        HStack(spacing: 6) {
+                            Group {
+                                if showKey { TextField("OpenCode API key", text: $keyInput) }
+                                else { SecureField("OpenCode API key", text: $keyInput) }
+                            }
+                            Button { showKey.toggle() } label: { Image(systemName: showKey ? "eye.slash" : "eye") }
+                                .buttonStyle(.borderless)
+                            Button("Save") { ai.setKey(keyInput); editingKey = false }
+                                .disabled(keyInput.trimmingCharacters(in: .whitespaces).isEmpty)
+                        }
+                    }
+                    Picker("Model", selection: $ai.model) {
+                        ForEach(AISettings.freeModels) { Text($0.label).tag($0.id) }
                     }
                 }
-                .disabled(!hotkey.enabled)
-                Text(hotkey.enabled
-                     ? "Click the shortcut, then press a new combo (must include ⌘, ⌃, or ⌥)."
-                     : "The shortcut is off — open Stash by clicking the menu-bar icon.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
 
-            Section("AI regex (OpenCode)") {
-                if ai.hasKey && !editingKey {
+                Section("Data") {
+                    LabeledContent("Clips stored", value: indexer.indexedCount.formatted())
                     HStack {
-                        Label("API key set", systemImage: "key.fill").foregroundStyle(.green)
+                        Button("Export…", action: onExport)
+                        Button("Import from Copy 'Em…", action: onImport)
                         Spacer()
-                        Button("Change") { keyInput = ""; showKey = false; editingKey = true }
-                        Button("Remove", role: .destructive) { ai.setKey("") }
                     }
-                } else {
-                    HStack(spacing: 6) {
-                        Group {
-                            if showKey { TextField("OpenCode API key", text: $keyInput) }
-                            else { SecureField("OpenCode API key", text: $keyInput) }
-                        }
-                        Button { showKey.toggle() } label: { Image(systemName: showKey ? "eye.slash" : "eye") }
-                            .buttonStyle(.borderless)
-                        Button("Save") { ai.setKey(keyInput); editingKey = false }
-                            .disabled(keyInput.trimmingCharacters(in: .whitespaces).isEmpty)
-                    }
+                    Text("Stored at ~/Library/Application Support/Stash")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
-                Picker("Model", selection: $ai.model) {
-                    ForEach(AISettings.freeModels) { Text($0.label).tag($0.id) }
-                }
-            }
 
-            Section("Data") {
-                LabeledContent("Clips stored", value: indexer.indexedCount.formatted())
-                HStack {
-                    Button("Export…", action: onExport)
-                    Button("Import from Copy 'Em…", action: onImport)
-                    Spacer()
+                Section("About") {
+                    LabeledContent("Version", value: version)
+                    Link("Website", destination: URL(string: "https://alyetama.github.io/Stash/")!)
+                    Link("Source on GitHub", destination: URL(string: "https://github.com/Alyetama/Stash")!)
                 }
-                Text("Stored at ~/Library/Application Support/Stash")
-                    .font(.caption).foregroundStyle(.secondary)
             }
-
-            Section("About") {
-                LabeledContent("Version", value: version)
-                Link("Website", destination: URL(string: "https://alyetama.github.io/Stash/")!)
-                Link("Source on GitHub", destination: URL(string: "https://github.com/Alyetama/Stash")!)
-            }
+            .formStyle(.grouped)
+            .frame(width: 330)
+            .scrollDisabled(true)
+            .fixedSize(horizontal: false, vertical: true)
         }
-        .formStyle(.grouped)
-        .frame(width: 440)
-        .scrollDisabled(true)
-        .fixedSize(horizontal: false, vertical: true)
+        .fixedSize()
     }
 }
 
