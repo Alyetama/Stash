@@ -7,6 +7,8 @@ final class HotKeySettings: ObservableObject {
     @Published private(set) var keyCode: UInt32
     @Published private(set) var modifiers: UInt32   // Carbon mask
     @Published private(set) var display: String
+    /// When off, no global shortcut is registered (open via the menu-bar icon).
+    @Published var enabled: Bool { didSet { d.set(enabled, forKey: "hk.enabled"); onChange?() } }
     var onChange: (() -> Void)?
 
     private let d = UserDefaults.standard
@@ -14,6 +16,7 @@ final class HotKeySettings: ObservableObject {
         keyCode = UInt32(d.object(forKey: "hk.keyCode") as? Int ?? Int(HotKeyCenter.defaultKeyCode))
         modifiers = UInt32(d.object(forKey: "hk.modifiers") as? Int ?? Int(HotKeyCenter.defaultModifiers))
         display = d.string(forKey: "hk.display") ?? HotKeyCenter.defaultDisplay
+        enabled = d.object(forKey: "hk.enabled") as? Bool ?? true
     }
 
     func set(keyCode: UInt32, modifiers: UInt32, display: String) {

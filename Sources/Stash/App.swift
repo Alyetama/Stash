@@ -50,6 +50,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func registerHotKey() {
+        guard hotkeySettings.enabled else {
+            HotKeyCenter.shared.clearMainHotKey()
+            return
+        }
         HotKeyCenter.shared.setMainHotKey(
             keyCode: hotkeySettings.keyCode,
             modifiers: hotkeySettings.modifiers

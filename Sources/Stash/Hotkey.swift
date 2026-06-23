@@ -13,10 +13,10 @@ final class HotKeyCenter {
     private var installed = false
     private var mainID: UInt32?
 
-    /// Default summon shortcut: ⌃⌥⌘C.
+    /// Default summon shortcut: ⌃⌥C.
     static let defaultKeyCode = UInt32(kVK_ANSI_C)
-    static let defaultModifiers = UInt32(cmdKey | optionKey | controlKey)
-    static let defaultDisplay = "⌃⌥⌘C"
+    static let defaultModifiers = UInt32(optionKey | controlKey)
+    static let defaultDisplay = "⌃⌥C"
 
     @discardableResult
     func register(keyCode: UInt32, modifiers: UInt32, action: @escaping () -> Void) -> Bool {
@@ -45,6 +45,13 @@ final class HotKeyCenter {
            let ref {
             refs[id] = ref; handlers[id] = action; mainID = id
         }
+    }
+
+    /// Remove the main summon hot key (used when the shortcut is disabled).
+    func clearMainHotKey() {
+        guard let id = mainID, let ref = refs[id] else { return }
+        UnregisterEventHotKey(ref)
+        refs[id] = nil; handlers[id] = nil; mainID = nil
     }
 
     /// Convert NSEvent modifier flags to Carbon masks for RegisterEventHotKey.

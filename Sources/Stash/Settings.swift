@@ -49,6 +49,7 @@ struct SettingsView: View {
                      ? "Every copy is saved as a separate entry."
                      : "Re-copying something already saved moves it to the top instead of duplicating.")
                     .font(.caption).foregroundStyle(.secondary)
+                Toggle("Enable global shortcut", isOn: $hotkey.enabled)
                 LabeledContent("Global shortcut") {
                     HStack(spacing: 8) {
                         ShortcutField(display: hotkey.display) { code, mods, disp in
@@ -58,7 +59,10 @@ struct SettingsView: View {
                         Button("Reset") { hotkey.reset() }
                     }
                 }
-                Text("Click the shortcut, then press a new combo (must include ⌘, ⌃, or ⌥).")
+                .disabled(!hotkey.enabled)
+                Text(hotkey.enabled
+                     ? "Click the shortcut, then press a new combo (must include ⌘, ⌃, or ⌥)."
+                     : "The shortcut is off — open Stash by clicking the menu-bar icon.")
                     .font(.caption).foregroundStyle(.secondary)
             }
 

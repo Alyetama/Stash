@@ -58,7 +58,7 @@ Everything is **local-first** — no telemetry, and your clips never leave your 
 
 - **Two panel layouts** — a centered, Spotlight-style window, or a **compact dropdown** anchored right under the menu-bar icon (toggle in Settings).
 - **Themes** — System (frosted), Midnight (indigo/violet), and One Dark.
-- **Global hotkey** — summon from any app with <kbd>⌃</kbd><kbd>⌥</kbd><kbd>⌘</kbd><kbd>C</kbd>, fully **customizable** in Settings.
+- **Global hotkey** — summon from any app with <kbd>⌃</kbd><kbd>⌥</kbd><kbd>C</kbd>, fully **customizable** in Settings.
 - **Menu-bar native** — left-click opens search, right-click for the menu. No Dock clutter (LSUIElement agent app).
 
 **Your data**
@@ -71,7 +71,7 @@ Everything is **local-first** — no telemetry, and your clips never leave your 
 1. Download and open **`dist/Stash.dmg`** (or grab it from Releases).
 2. Drag **Stash** onto **Applications**.
 3. Launch it from Applications or Spotlight — a clipboard icon appears in the menu bar.
-4. Press <kbd>⌃</kbd><kbd>⌥</kbd><kbd>⌘</kbd><kbd>C</kbd> and start searching.
+4. Press <kbd>⌃</kbd><kbd>⌥</kbd><kbd>C</kbd> and start searching.
 
 > Stash is ad-hoc signed (no paid Developer ID). On first launch macOS Gatekeeper may warn — right-click the app and choose **Open**, or allow it under **System Settings → Privacy & Security**.
 
@@ -81,7 +81,7 @@ Everything is **local-first** — no telemetry, and your clips never leave your 
 
 | Action | How |
 | --- | --- |
-| Open search | Left-click the menu-bar icon, or <kbd>⌃⌥⌘C</kbd> |
+| Open search | Left-click the menu-bar icon, or <kbd>⌃⌥C</kbd> |
 | Switch match mode | Toggle **Substring / Words / Regex** in the bar |
 | Move selection | <kbd>↑</kbd> / <kbd>↓</kbd> |
 | Copy a clip | Click it, or press <kbd>↵</kbd> (copies and closes) |
