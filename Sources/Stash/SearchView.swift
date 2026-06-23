@@ -9,6 +9,7 @@ struct SearchView: View {
     @ObservedObject var theme: ThemeSettings
     @ObservedObject var groups: GroupSettings
     var onOpenSettings: () -> Void
+    var onDeleteGroup: (String) -> Void
     var onHoldChange: (Bool) -> Void
     var onClose: () -> Void
     var compact: Bool = false
@@ -36,6 +37,8 @@ struct SearchView: View {
         .onChange(of: controller.scope) { _ in controller.runSearch() }
         // Keep the panel open while the AI popover (and its Keychain prompt) is up.
         .onChange(of: showAI) { onHoldChange($0) }
+        // Likewise while the new-group prompt is up, so the panel doesn't dismiss.
+        .onChange(of: showNewGroup) { onHoldChange($0) }
         .onAppear { controller.refreshGroups() }
         .alert("New group", isPresented: $showNewGroup) {
             TextField("Group name", text: $newGroupName)
@@ -110,6 +113,15 @@ struct SearchView: View {
             Divider()
             Button { newGroupTarget = nil; newGroupName = ""; showNewGroup = true } label: {
                 Label("New group…", systemImage: "plus")
+            }
+            if !groups.groups.isEmpty {
+                Menu {
+                    ForEach(groups.groups, id: \.self) { g in
+                        Button(role: .destructive) { onDeleteGroup(g) } label: { Text(g) }
+                    }
+                } label: {
+                    Label("Delete group…", systemImage: "trash")
+                }
             }
         } label: {
             Image(systemName: scopeIcon)
