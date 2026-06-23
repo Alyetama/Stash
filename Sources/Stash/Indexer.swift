@@ -133,7 +133,7 @@ final class Indexer: ObservableObject {
                 return
             }
             guard let thumb = ImageThumb.make(from: data, maxPixel: 96) else { return }
-            let label = "\(ext == "gif" ? "GIF" : "Image") · \(thumb.w)×\(thumb.h)"
+            let label = "\(Self.formatLabel(ext)) · \(thumb.w)×\(thumb.h)"
             guard let pk = try? sc.insertImage(label: label, app: app, w: thumb.w, h: thumb.h, ext: ext, hash: hash)
             else { return }
             try? FileManager.default.createDirectory(atPath: Sidecar.imagesDir, withIntermediateDirectories: true)
@@ -229,7 +229,7 @@ final class Indexer: ObservableObject {
                     let h = Self.fnv1a(data)
                     if !keepDuplicates && seenImage.contains(h) { return }
                     guard let thumb = ImageThumb.make(from: data, maxPixel: 96) else { return }
-                    let label = "\(ext == "gif" ? "GIF" : "Image") · \(thumb.w)×\(thumb.h)"
+                    let label = "\(Self.formatLabel(ext)) · \(thumb.w)×\(thumb.h)"
                     let when = cand.created > 0 ? Date(timeIntervalSince1970: cand.created) : Date()
                     guard let pk = try? sc.insertImage(label: label, app: cand.app, w: thumb.w, h: thumb.h,
                                                        ext: ext, hash: Int64(bitPattern: h),
@@ -249,6 +249,21 @@ final class Indexer: ObservableObject {
                 self.publish { self.phase = .ready; self.message = "Ready" }
                 done(.failure(error))
             }
+        }
+    }
+
+    /// Human-readable format name for an image clip's file extension.
+    private static func formatLabel(_ ext: String) -> String {
+        switch ext.lowercased() {
+        case "jpg", "jpeg": return "JPEG"
+        case "gif":         return "GIF"
+        case "png":         return "PNG"
+        case "webp":        return "WebP"
+        case "avif":        return "AVIF"
+        case "heic":        return "HEIC"
+        case "heif":        return "HEIF"
+        case "tiff":        return "TIFF"
+        default:            return ext.isEmpty ? "Image" : ext.uppercased()
         }
     }
 
