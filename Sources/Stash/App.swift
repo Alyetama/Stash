@@ -124,21 +124,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.treatsFilePackagesAsDirectories = false   // a .cep package is one item
         panel.allowsMultipleSelection = false
 
-        // Checkbox: keep duplicate clips (off = de-duplicate, the default).
-        let dupCheckbox = NSButton(checkboxWithTitle: "Also import duplicate clips", target: nil, action: nil)
-        dupCheckbox.state = .off
-        dupCheckbox.toolTip = "When off, identical clips are imported only once. When on, every copy is kept (preserves copy history/frequency)."
-        let accessory = NSView(frame: NSRect(x: 0, y: 0, width: 360, height: 30))
-        dupCheckbox.frame = NSRect(x: 18, y: 6, width: 324, height: 18)
-        accessory.addSubview(dupCheckbox)
-        panel.accessoryView = accessory
-        panel.isAccessoryViewDisclosed = true
-
         NSApp.activate(ignoringOtherApps: true)
         panel.begin { [weak self] resp in
             guard resp == .OK, let url = panel.url, let self else { return }
             let store = Self.storedataPath(for: url)
-            let keepDuplicates = dupCheckbox.state == .on
+
+            // Ask how to handle duplicates before importing.
+            let ask = NSAlert()
+            ask.messageText = "Import duplicate clips?"
+            ask.informativeText = "Copy 'Em often stores the same text many times. Keep every copy, or import each unique clip only once?"
+            ask.addButton(withTitle: "Remove Duplicates")   // .alertFirstButtonReturn
+            ask.addButton(withTitle: "Keep Duplicates")     // .alertSecondButtonReturn
+            ask.addButton(withTitle: "Cancel")              // .alertThirdButtonReturn
+            NSApp.activate(ignoringOtherApps: true)
+            let choice = ask.runModal()
+            guard choice != .alertThirdButtonReturn else { return }
+            let keepDuplicates = (choice == .alertSecondButtonReturn)
+
             self.indexer.importFromStore(store, keepDuplicates: keepDuplicates) { result in
                 let alert = NSAlert()
                 switch result {
