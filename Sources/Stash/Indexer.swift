@@ -14,6 +14,7 @@ final class Indexer: ObservableObject {
     @Published private(set) var lastSync: Date?
     @Published private(set) var message: String = "Starting…"
     @Published private(set) var copyEmAvailable = false
+    @Published var capturePaused: Bool { didSet { UserDefaults.standard.set(capturePaused, forKey: "capturePaused") } }
 
     let sourcePath: String
 
@@ -24,6 +25,7 @@ final class Indexer: ObservableObject {
 
     init(sourcePath: String = SourceStore.defaultPath) {
         self.sourcePath = sourcePath
+        self.capturePaused = UserDefaults.standard.bool(forKey: "capturePaused")
     }
 
     func start() {
@@ -88,7 +90,7 @@ final class Indexer: ObservableObject {
 
     private func recordClip(text: String, app: String?) {
         queue.async { [weak self] in
-            guard let self, let sc = self.sidecar else { return }
+            guard let self, let sc = self.sidecar, !self.capturePaused else { return }
             guard let inserted = try? sc.insertClip(text: text, app: app), inserted else { return }
             self.publish {
                 self.indexedCount += 1
@@ -99,7 +101,7 @@ final class Indexer: ObservableObject {
 
     private func recordImage(data: Data, ext: String, app: String?) {
         queue.async { [weak self] in
-            guard let self, let sc = self.sidecar else { return }
+            guard let self, let sc = self.sidecar, !self.capturePaused else { return }
             guard let thumb = ImageThumb.make(from: data, maxPixel: 96) else { return }
             let label = "Image · \(thumb.w)×\(thumb.h)"
             guard let pk = try? sc.insertImage(label: label, app: app, w: thumb.w, h: thumb.h, ext: ext)

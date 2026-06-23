@@ -19,6 +19,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let aiSettings = AISettings()
     private lazy var controller = SearchController(sourcePath: indexer.sourcePath, indexer: indexer, transforms: transforms, ai: aiSettings)
     private lazy var panelController = PanelController(controller: controller, indexer: indexer)
+    private lazy var settingsWindow = SettingsWindowController(
+        indexer: indexer, ai: aiSettings,
+        onExport: { [weak self] in self?.exportData() },
+        onImport: { [weak self] in self?.indexer.importFromCopyEm() })
     private var statusItem: NSStatusItem!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -84,6 +88,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(.separator())
 
+        let settings = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        settings.target = self
+        menu.addItem(settings)
+
         let quit = NSMenuItem(title: "Quit Stash", action: #selector(quit), keyEquivalent: "q")
         quit.target = self
         menu.addItem(quit)
@@ -110,6 +118,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openSearch() { panelController.show() }
     @objc private func importCopyEm() { indexer.importFromCopyEm() }
+    @objc private func openSettings() { settingsWindow.show() }
     @objc private func quit() { NSApp.terminate(nil) }
 
     @objc private func exportData() {

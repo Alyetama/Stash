@@ -1,0 +1,119 @@
+import SwiftUI
+import AppKit
+import ServiceManagement
+
+/// Launch-at-login via the modern Service Management API.
+enum LoginItem {
+    static var enabled: Bool { SMAppService.mainApp.status == .enabled }
+    static func set(_ on: Bool) {
+        do { on ? try SMAppService.mainApp.register() : try SMAppService.mainApp.unregister() }
+        catch { NSSound.beep() }
+    }
+}
+
+struct SettingsView: View {
+    @ObservedObject var indexer: Indexer
+    @ObservedObject var ai: AISettings
+    var onExport: () -> Void
+    var onImport: () -> Void
+
+    @State private var launchAtLogin = LoginItem.enabled
+    @State private var keyInput = ""
+    @State private var editingKey = false
+    @State private var showKey = false
+    @State private var confirmClear = false
+
+    private var version: String {
+        (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "1.0"
+    }
+
+    var body: some View {
+        Form {
+            Section("General") {
+                Toggle("Launch Stash at login", isOn: $launchAtLogin)
+                    .onChange(of: launchAtLogin) { LoginItem.set($0) }
+                Toggle("Pause clipboard capture", isOn: $indexer.capturePaused)
+                Text("Global shortcut: ⌃⌥⌘C")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
+            Section("AI regex (OpenCode)") {
+                if ai.hasKey && !editingKey {
+                    HStack {
+                        Label("API key set", systemImage: "key.fill").foregroundStyle(.green)
+                        Spacer()
+                        Button("Change") { keyInput = ""; showKey = false; editingKey = true }
+                        Button("Remove", role: .destructive) { ai.setKey("") }
+                    }
+                } else {
+                    HStack(spacing: 6) {
+                        Group {
+                            if showKey { TextField("OpenCode API key", text: $keyInput) }
+                            else { SecureField("OpenCode API key", text: $keyInput) }
+                        }
+                        Button { showKey.toggle() } label: { Image(systemName: showKey ? "eye.slash" : "eye") }
+                            .buttonStyle(.borderless)
+                        Button("Save") { ai.setKey(keyInput); editingKey = false }
+                            .disabled(keyInput.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                }
+                Picker("Model", selection: $ai.model) {
+                    ForEach(AISettings.freeModels) { Text($0.label).tag($0.id) }
+                }
+            }
+
+            Section("Data") {
+                LabeledContent("Clips stored", value: indexer.indexedCount.formatted())
+                HStack {
+                    Button("Export…", action: onExport)
+                    if indexer.copyEmAvailable {
+                        Button("Import from Copy 'Em", action: onImport)
+                    }
+                    Spacer()
+                }
+                Text("Stored at ~/Library/Application Support/Stash")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
+            Section("About") {
+                LabeledContent("Version", value: version)
+                Link("Website", destination: URL(string: "https://alyetama.github.io/Stash/")!)
+                Link("Source on GitHub", destination: URL(string: "https://github.com/Alyetama/Stash")!)
+            }
+        }
+        .formStyle(.grouped)
+        .frame(width: 440)
+        .scrollDisabled(true)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// Owns the Settings NSWindow (the app is a menu-bar agent, so we manage it manually).
+final class SettingsWindowController {
+    private var window: NSWindow?
+    private let indexer: Indexer
+    private let ai: AISettings
+    private let onExport: () -> Void
+    private let onImport: () -> Void
+
+    init(indexer: Indexer, ai: AISettings, onExport: @escaping () -> Void, onImport: @escaping () -> Void) {
+        self.indexer = indexer
+        self.ai = ai
+        self.onExport = onExport
+        self.onImport = onImport
+    }
+
+    func show() {
+        if window == nil {
+            let view = SettingsView(indexer: indexer, ai: ai, onExport: onExport, onImport: onImport)
+            let w = NSWindow(contentViewController: NSHostingController(rootView: view))
+            w.title = "Stash Settings"
+            w.styleMask = [.titled, .closable, .miniaturizable]
+            w.isReleasedWhenClosed = false
+            w.center()
+            window = w
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        window?.makeKeyAndOrderFront(nil)
+    }
+}
