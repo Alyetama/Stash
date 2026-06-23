@@ -140,29 +140,53 @@ final class Indexer: ObservableObject {
                     self.buildDone = 0
                     self.message = "Importing \(total.formatted()) entries…"
                 }
-                // Text entries.
-                var inBatch = 0, added = 0
+
+                // Content-hash sets of what's already in Stash, to skip duplicates.
+                var seenText = Set<UInt64>()
+                var seenImage = Set<UInt64>()
+                if let s = try? sc.db.prepare("SELECT text, kind, pk, ext FROM entries") {
+                    while (try? s.step()) == true {
+                        if s.string(1) == "image" {
+                            let pk = s.int(2), ext = s.string(3) ?? "png"
+                            if let d = try? Data(contentsOf: URL(fileURLWithPath: Sidecar.imageFile(pk: pk, ext: ext))) {
+                                seenImage.insert(Self.fnv1a(d))
+                            }
+                        } else if let t = s.string(0) {
+                            seenText.insert(Self.fnv1a(t))
+                        }
+                    }
+                    s.finalize()
+                }
+
+                // Text entries — skip ones whose content already exists.
+                var inBatch = 0, added = 0, skipped = 0
                 try sc.begin()
                 try source.forEachRow(afterPK: 0) { row in
+                    let h = Self.fnv1a(row.text)
+                    if seenText.contains(h) { skipped += 1; return }
                     do { try sc.insertImported(row) } catch { return }
+                    seenText.insert(h)
                     inBatch += 1; added += 1
                     if inBatch >= self.commitBatch {
                         try? sc.commit(); try? sc.begin(); inBatch = 0
-                        let d = added; self.publish { self.buildDone = d; self.indexedCount = Int((try? sc.count()) ?? 0) }
+                        let d = added + skipped; self.publish { self.buildDone = d; self.indexedCount = Int((try? sc.count()) ?? 0) }
                     }
                 }
                 try sc.commit()
-                // Image entries.
+                // Image entries — skip ones with identical image data.
                 try? FileManager.default.createDirectory(atPath: Sidecar.imagesDir, withIntermediateDirectories: true)
                 try source.forEachImageEntry { cand in
-                    guard let (data, ext) = CopyEmImage.extractLargest(from: cand.blob),
-                          let thumb = ImageThumb.make(from: data, maxPixel: 96) else { return }
+                    guard let (data, ext) = CopyEmImage.extractLargest(from: cand.blob) else { return }
+                    let h = Self.fnv1a(data)
+                    if seenImage.contains(h) { return }
+                    guard let thumb = ImageThumb.make(from: data, maxPixel: 96) else { return }
                     let label = "Image · \(thumb.w)×\(thumb.h)"
                     let when = cand.created > 0 ? Date(timeIntervalSince1970: cand.created) : Date()
                     guard let pk = try? sc.insertImage(label: label, app: cand.app, w: thumb.w, h: thumb.h,
                                                        ext: ext, source: "copyem", at: when) else { return }
                     try? data.write(to: URL(fileURLWithPath: Sidecar.imageFile(pk: pk, ext: ext)))
                     try? thumb.png.write(to: URL(fileURLWithPath: Sidecar.thumbFile(pk: pk)))
+                    seenImage.insert(h)
                     added += 1
                 }
                 let count = Int(try sc.count())
@@ -176,6 +200,14 @@ final class Indexer: ObservableObject {
                 done(.failure(error))
             }
         }
+    }
+
+    /// Stable 64-bit content hash (FNV-1a) for deduping imports.
+    private static func fnv1a(_ s: String) -> UInt64 { fnv1a(Data(s.utf8)) }
+    private static func fnv1a(_ data: Data) -> UInt64 {
+        var h: UInt64 = 0xcbf29ce484222325
+        data.withUnsafeBytes { raw in for b in raw { h = (h ^ UInt64(b)) &* 0x00000100000001B3 } }
+        return h
     }
 
     // MARK: - Copy 'Em historical import (live store, optional/auto)

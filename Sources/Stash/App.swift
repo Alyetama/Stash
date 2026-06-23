@@ -21,9 +21,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var controller = SearchController(sourcePath: indexer.sourcePath, indexer: indexer, transforms: transforms, ai: aiSettings, theme: themeSettings)
     private lazy var panelController = PanelController(controller: controller, indexer: indexer)
     private lazy var settingsWindow = SettingsWindowController(
-        indexer: indexer, ai: aiSettings, theme: themeSettings,
+        indexer: indexer, ai: aiSettings, theme: themeSettings, hotkey: hotkeySettings,
         onExport: { [weak self] in self?.exportData() },
         onImport: { [weak self] in self?.importFromCEP() })
+    private let hotkeySettings = HotKeySettings()
     private var statusItem: NSStatusItem!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -39,9 +40,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
 
-        HotKeyCenter.shared.register(
-            keyCode: HotKeyCenter.defaultKeyCode,
-            modifiers: HotKeyCenter.defaultModifiers
+        hotkeySettings.onChange = { [weak self] in self?.registerHotKey() }
+        registerHotKey()
+    }
+
+    private func registerHotKey() {
+        HotKeyCenter.shared.setMainHotKey(
+            keyCode: hotkeySettings.keyCode,
+            modifiers: hotkeySettings.modifiers
         ) { [weak self] in
             self?.panelController.toggle()
         }

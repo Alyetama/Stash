@@ -15,6 +15,7 @@ struct SettingsView: View {
     @ObservedObject var indexer: Indexer
     @ObservedObject var ai: AISettings
     @ObservedObject var theme: ThemeSettings
+    @ObservedObject var hotkey: HotKeySettings
     var onExport: () -> Void
     var onImport: () -> Void
 
@@ -37,7 +38,16 @@ struct SettingsView: View {
                 Toggle("Launch Stash at login", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { LoginItem.set($0) }
                 Toggle("Pause clipboard capture", isOn: $indexer.capturePaused)
-                Text("Global shortcut: ⌃⌥⌘C")
+                LabeledContent("Global shortcut") {
+                    HStack(spacing: 8) {
+                        ShortcutField(display: hotkey.display) { code, mods, disp in
+                            hotkey.set(keyCode: code, modifiers: mods, display: disp)
+                        }
+                        .frame(width: 120, height: 22)
+                        Button("Reset") { hotkey.reset() }
+                    }
+                }
+                Text("Click the shortcut, then press a new combo (must include ⌘, ⌃, or ⌥).")
                     .font(.caption).foregroundStyle(.secondary)
             }
 
@@ -96,21 +106,23 @@ final class SettingsWindowController {
     private let indexer: Indexer
     private let ai: AISettings
     private let theme: ThemeSettings
+    private let hotkey: HotKeySettings
     private let onExport: () -> Void
     private let onImport: () -> Void
 
-    init(indexer: Indexer, ai: AISettings, theme: ThemeSettings,
+    init(indexer: Indexer, ai: AISettings, theme: ThemeSettings, hotkey: HotKeySettings,
          onExport: @escaping () -> Void, onImport: @escaping () -> Void) {
         self.indexer = indexer
         self.ai = ai
         self.theme = theme
+        self.hotkey = hotkey
         self.onExport = onExport
         self.onImport = onImport
     }
 
     func show() {
         if window == nil {
-            let view = SettingsView(indexer: indexer, ai: ai, theme: theme, onExport: onExport, onImport: onImport)
+            let view = SettingsView(indexer: indexer, ai: ai, theme: theme, hotkey: hotkey, onExport: onExport, onImport: onImport)
             let w = NSWindow(contentViewController: NSHostingController(rootView: view))
             w.title = "Stash Settings"
             w.styleMask = [.titled, .closable, .miniaturizable]
