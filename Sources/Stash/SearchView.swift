@@ -237,12 +237,29 @@ struct SearchView: View {
 /// lookup happens once per app rather than per row.
 enum AppIconResolver {
     private static var cache: [String: NSImage?] = [:]
+
     static func icon(for name: String) -> NSImage? {
         if let cached = cache[name] { return cached }
-        let ws = NSWorkspace.shared
-        let img = ws.fullPath(forApplication: name).map { ws.icon(forFile: $0) }
+        let img = resolveURL(name).map { NSWorkspace.shared.icon(forFile: $0.path) }
         cache[name] = img
         return img
+    }
+
+    /// Map a recorded app name to its bundle URL. The recorded name is the app's
+    /// *display* name, which can differ from its bundle filename (e.g. Copy 'Em
+    /// stores "iTerm2" but the bundle on disk is "iTerm.app").
+    private static func resolveURL(_ name: String) -> URL? {
+        let ws = NSWorkspace.shared
+        // 1. Exact bundle-filename match (Safari, Google Chrome, …).
+        if let p = ws.fullPath(forApplication: name) { return URL(fileURLWithPath: p) }
+        // 2. A running app whose display name matches (handles iTerm2 → iTerm.app).
+        if let u = ws.runningApplications.first(where: { $0.localizedName == name })?.bundleURL { return u }
+        // 3. Strip a trailing version number from the name and retry (iTerm2 → iTerm).
+        let stripped = name.replacingOccurrences(of: "\\s*\\d+$", with: "", options: .regularExpression)
+        if stripped != name, !stripped.isEmpty, let p = ws.fullPath(forApplication: stripped) {
+            return URL(fileURLWithPath: p)
+        }
+        return nil
     }
 }
 
