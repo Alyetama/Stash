@@ -327,9 +327,9 @@ private struct ResultRow: View {
                 if isExpandable {
                     Button { withAnimation(.easeInOut(duration: 0.15)) { expanded.toggle() } } label: {
                         Image(systemName: expanded ? "chevron.up" : "chevron.down")
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(.system(size: 9, weight: .semibold))
                             .foregroundStyle(selected ? Color.white : Color.secondary)
-                            .frame(width: 22, height: 22)
+                            .frame(width: 18, height: 18)
                             .background(
                                 Circle().fill(selected ? Color.white.opacity(0.18) : Color.primary.opacity(0.08)))
                     }
