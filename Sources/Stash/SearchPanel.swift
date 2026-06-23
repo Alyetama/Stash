@@ -52,6 +52,10 @@ final class PanelController: NSObject, NSWindowDelegate {
     private let controller: SearchController
     private let indexer: Indexer
     var onOpenSettings: (() -> Void)?
+    /// Returns the menu-bar status item's frame in screen coordinates, used to
+    /// anchor the compact panel under the icon.
+    var statusButtonRect: (() -> NSRect?)?
+    private var builtCompact: Bool?
 
     init(controller: SearchController, indexer: Indexer) {
         self.controller = controller
@@ -77,14 +81,30 @@ final class PanelController: NSObject, NSWindowDelegate {
     }
 
     private func present() {
-        let panel = self.panel ?? makePanel()
+        let compact = UserDefaults.standard.bool(forKey: "compactPanel")
+        // Rebuild the panel if the layout mode changed since it was created.
+        if let built = builtCompact, built != compact { panel?.orderOut(nil); panel = nil }
+        let panel = self.panel ?? makePanel(compact: compact)
         self.panel = panel
-        if let screen = NSScreen.main ?? NSScreen.screens.first {
-            let f = screen.visibleFrame
-            let size = panel.frame.size
-            let origin = NSPoint(x: f.midX - size.width / 2,
-                                 y: f.midY - size.height / 2 + f.height * 0.08)
-            panel.setFrameOrigin(origin)
+        builtCompact = compact
+
+        if compact, let anchor = statusButtonRect?() {
+            let size = NSSize(width: 380, height: 520)
+            panel.setContentSize(size)
+            let vis = (NSScreen.screens.first { $0.frame.contains(anchor.origin) } ?? NSScreen.main)?.visibleFrame ?? .zero
+            var x = anchor.midX - size.width / 2
+            x = min(max(x, vis.minX + 8), vis.maxX - size.width - 8)
+            let y = anchor.minY - size.height - 6   // just below the status item
+            panel.setFrameOrigin(NSPoint(x: x, y: y))
+        } else {
+            panel.setContentSize(NSSize(width: 720, height: 460))
+            if let screen = NSScreen.main ?? NSScreen.screens.first {
+                let f = screen.visibleFrame
+                let size = panel.frame.size
+                let origin = NSPoint(x: f.midX - size.width / 2,
+                                     y: f.midY - size.height / 2 + f.height * 0.08)
+                panel.setFrameOrigin(origin)
+            }
         }
         suppressResignUntil = Date().addingTimeInterval(0.6)
         NSApp.activate(ignoringOtherApps: true)
@@ -100,7 +120,7 @@ final class PanelController: NSObject, NSWindowDelegate {
         controller.reset()   // start blank next time
     }
 
-    private func makePanel() -> FloatingPanel {
+    private func makePanel(compact: Bool = false) -> FloatingPanel {
         let panel = FloatingPanel()
         panel.delegate = self
         let root = SearchView(controller: controller, indexer: indexer,
@@ -117,7 +137,8 @@ final class PanelController: NSObject, NSWindowDelegate {
                                       DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { self.holdOpen = false }
                                   }
                               },
-                              onClose: { [weak self] in self?.hide() })
+                              onClose: { [weak self] in self?.hide() },
+                              compact: compact)
         panel.contentView = NSHostingView(rootView: root)
         return panel
     }
@@ -138,6 +159,7 @@ extension Notification.Name {
 /// results list can be driven entirely from the keyboard while typing.
 struct SearchField: NSViewRepresentable {
     @Binding var text: String
+    var fontSize: CGFloat = 22
     var onMoveUp: () -> Void
     var onMoveDown: () -> Void
     var onSubmit: () -> Void
@@ -152,7 +174,7 @@ struct SearchField: NSViewRepresentable {
         field.focusRingType = .none
         field.isBezeled = false
         field.drawsBackground = false
-        field.font = .systemFont(ofSize: 22, weight: .regular)
+        field.font = .systemFont(ofSize: fontSize, weight: .regular)
         field.lineBreakMode = .byTruncatingTail
         field.cell?.usesSingleLineMode = true
         context.coordinator.field = field

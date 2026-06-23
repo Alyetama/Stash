@@ -41,6 +41,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         panelController.onOpenSettings = { [weak self] in self?.settingsWindow.show() }
+        panelController.statusButtonRect = { [weak self] in
+            guard let button = self?.statusItem.button, let win = button.window else { return nil }
+            return win.convertToScreen(button.convert(button.bounds, to: nil))
+        }
         hotkeySettings.onChange = { [weak self] in self?.registerHotKey() }
         registerHotKey()
     }

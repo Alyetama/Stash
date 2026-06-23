@@ -10,6 +10,7 @@ struct SearchView: View {
     var onOpenSettings: () -> Void
     var onHoldChange: (Bool) -> Void
     var onClose: () -> Void
+    var compact: Bool = false
     @State private var showTransforms = false
     @State private var showAI = false
 
@@ -24,7 +25,7 @@ struct SearchView: View {
         .background(theme.theme.panelBackground())
         .environment(\.appTheme, theme.theme)
         .tint(theme.theme.accent)
-        .frame(minWidth: 560, minHeight: 360)
+        .frame(minWidth: compact ? 360 : 560, minHeight: compact ? 300 : 360)
         .onChange(of: controller.query) { _ in controller.runSearch() }
         .onChange(of: controller.mode) { _ in controller.runSearch() }
         .onChange(of: controller.favoritesOnly) { _ in controller.runSearch() }
@@ -34,74 +35,105 @@ struct SearchView: View {
 
     // MARK: header (search field + mode selector)
 
-    private var header: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 18))
-                .foregroundStyle(.secondary)
-            SearchField(
-                text: $controller.query,
-                onMoveUp: { controller.moveUp() },
-                onMoveDown: { controller.moveDown() },
-                onSubmit: { controller.copySelected(done: onClose) },
-                onCancel: onClose)
-            .frame(height: 30)
+    private var magnifier: some View {
+        Image(systemName: "magnifyingglass")
+            .font(.system(size: compact ? 15 : 18))
+            .foregroundStyle(.secondary)
+    }
 
-            Picker("", selection: $controller.mode) {
-                ForEach(SearchMode.allCases) { Text($0.rawValue).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .frame(width: 210)
+    private var searchFieldView: some View {
+        SearchField(
+            text: $controller.query,
+            fontSize: compact ? 17 : 22,
+            onMoveUp: { controller.moveUp() },
+            onMoveDown: { controller.moveDown() },
+            onSubmit: { controller.copySelected(done: onClose) },
+            onCancel: onClose)
+        .frame(height: compact ? 24 : 30)
+    }
 
-            // Scope dropdown: All clips vs Favorites.
-            Menu {
-                Button { controller.favoritesOnly = false } label: {
-                    Label("All clips", systemImage: controller.favoritesOnly ? "" : "checkmark")
-                }
-                Button { controller.favoritesOnly = true } label: {
-                    Label("Favorites", systemImage: controller.favoritesOnly ? "checkmark" : "star")
-                }
-            } label: {
-                Image(systemName: controller.favoritesOnly ? "star.fill" : "line.3.horizontal.decrease.circle")
-                    .foregroundStyle(controller.favoritesOnly ? AnyShapeStyle(.yellow) : AnyShapeStyle(.secondary))
-            }
-            .menuStyle(.borderlessButton)
-            .fixedSize()
-            .help("Show all clips or only favorites")
-
-            // Copy transformations popover.
-            Button { showTransforms.toggle() } label: {
-                Image(systemName: "textformat")
-                    .foregroundStyle(transforms.isActive ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.secondary))
-            }
-            .buttonStyle(.borderless)
-            .help("Copy transformations")
-            .popover(isPresented: $showTransforms, arrowEdge: .bottom) {
-                TransformsView(settings: transforms)
-            }
-
-            // AI regex generator — only in the Regex tab.
-            if controller.mode == .regex {
-                Button { showAI.toggle() } label: {
-                    Image(systemName: "sparkles")
-                        .foregroundStyle(ai.enabled ? AnyShapeStyle(theme.theme.accent) : AnyShapeStyle(.secondary))
-                }
-                .buttonStyle(.borderless)
-                .help("Generate a regex with AI")
-                .popover(isPresented: $showAI, arrowEdge: .bottom) {
-                    AIRegexView(ai: ai, controller: controller, onClose: { showAI = false })
-                }
-            }
-
-            Button(action: onOpenSettings) {
-                Image(systemName: "gearshape").foregroundStyle(.secondary)
-            }
-            .buttonStyle(.borderless)
-            .help("Settings")
+    private var modePicker: some View {
+        Picker("", selection: $controller.mode) {
+            ForEach(SearchMode.allCases) { Text($0.rawValue).tag($0) }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .frame(width: compact ? nil : 210)
+    }
+
+    // Scope dropdown: All clips vs Favorites.
+    private var favoritesMenu: some View {
+        Menu {
+            Button { controller.favoritesOnly = false } label: {
+                Label("All clips", systemImage: controller.favoritesOnly ? "" : "checkmark")
+            }
+            Button { controller.favoritesOnly = true } label: {
+                Label("Favorites", systemImage: controller.favoritesOnly ? "checkmark" : "star")
+            }
+        } label: {
+            Image(systemName: controller.favoritesOnly ? "star.fill" : "line.3.horizontal.decrease.circle")
+                .foregroundStyle(controller.favoritesOnly ? AnyShapeStyle(.yellow) : AnyShapeStyle(.secondary))
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .help("Show all clips or only favorites")
+    }
+
+    private var transformsButton: some View {
+        Button { showTransforms.toggle() } label: {
+            Image(systemName: "textformat")
+                .foregroundStyle(transforms.isActive ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.secondary))
+        }
+        .buttonStyle(.borderless)
+        .help("Copy transformations")
+        .popover(isPresented: $showTransforms, arrowEdge: .bottom) {
+            TransformsView(settings: transforms)
+        }
+    }
+
+    // AI regex generator — only in the Regex tab.
+    @ViewBuilder private var aiButton: some View {
+        if controller.mode == .regex {
+            Button { showAI.toggle() } label: {
+                Image(systemName: "sparkles")
+                    .foregroundStyle(ai.enabled ? AnyShapeStyle(theme.theme.accent) : AnyShapeStyle(.secondary))
+            }
+            .buttonStyle(.borderless)
+            .help("Generate a regex with AI")
+            .popover(isPresented: $showAI, arrowEdge: .bottom) {
+                AIRegexView(ai: ai, controller: controller, onClose: { showAI = false })
+            }
+        }
+    }
+
+    private var settingsButton: some View {
+        Button(action: onOpenSettings) {
+            Image(systemName: "gearshape").foregroundStyle(.secondary)
+        }
+        .buttonStyle(.borderless)
+        .help("Settings")
+    }
+
+    @ViewBuilder private var header: some View {
+        if compact {
+            // Two rows so the controls breathe in the narrow panel.
+            VStack(spacing: 8) {
+                HStack(spacing: 10) { magnifier; searchFieldView; settingsButton }
+                HStack(spacing: 8) {
+                    modePicker.frame(maxWidth: .infinity)
+                    favoritesMenu; transformsButton; aiButton
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+        } else {
+            HStack(spacing: 12) {
+                magnifier; searchFieldView; modePicker
+                favoritesMenu; transformsButton; aiButton; settingsButton
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+        }
     }
 
     // MARK: content

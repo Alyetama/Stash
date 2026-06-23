@@ -19,6 +19,7 @@ struct SettingsView: View {
     var onExport: () -> Void
     var onImport: () -> Void
 
+    @AppStorage("compactPanel") private var compactPanel = false
     @State private var launchAtLogin = LoginItem.enabled
     @State private var keyInput = ""
     @State private var editingKey = false
@@ -38,6 +39,11 @@ struct SettingsView: View {
                 Toggle("Launch Stash at login", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { LoginItem.set($0) }
                 Toggle("Pause clipboard capture", isOn: $indexer.capturePaused)
+                Toggle("Open under the menu bar (compact)", isOn: $compactPanel)
+                Text(compactPanel
+                     ? "The search panel drops down from the menu-bar icon in a smaller layout."
+                     : "The search panel opens centered on screen (Spotlight-style).")
+                    .font(.caption).foregroundStyle(.secondary)
                 Toggle("Keep duplicate clips", isOn: $indexer.keepDuplicates)
                 Text(indexer.keepDuplicates
                      ? "Every copy is saved as a separate entry."
