@@ -47,13 +47,25 @@ final class ClipboardMonitor {
         }
     }
 
+    /// Pasteboard image types we keep as-is, in priority order. PNG first (common,
+    /// lossless); GIF before TIFF so animated GIFs keep their real bytes. Anything
+    /// ImageIO can decode (JPEG/WebP/AVIF/HEIC/HEIF) thumbnails fine.
+    private static let imageTypes: [(uti: String, ext: String)] = [
+        ("public.png", "png"),
+        ("com.compuserve.gif", "gif"),
+        ("public.jpeg", "jpg"),
+        ("public.webp", "webp"),
+        ("org.webmproject.webp", "webp"),
+        ("public.avif", "avif"),
+        ("public.heic", "heic"),
+        ("public.heif", "heif"),
+    ]
+
     /// Pull image bytes off the pasteboard, normalising TIFF to PNG.
     private static func imageData(from pb: NSPasteboard) -> (Data, String)? {
-        if let d = pb.data(forType: .png) { return (d, "png") }
-        // GIF before TIFF: a copied GIF often carries a TIFF rep too; keep the real
-        // GIF bytes (we still preview it as a static first-frame thumbnail).
-        if let d = pb.data(forType: NSPasteboard.PasteboardType("com.compuserve.gif")) { return (d, "gif") }
-        if let d = pb.data(forType: NSPasteboard.PasteboardType("public.heic")) { return (d, "heic") }
+        for t in imageTypes {
+            if let d = pb.data(forType: NSPasteboard.PasteboardType(t.uti)) { return (d, t.ext) }
+        }
         if let d = pb.data(forType: .tiff) {
             if let rep = NSBitmapImageRep(data: d),
                let png = rep.representation(using: .png, properties: [:]) {
@@ -85,6 +97,17 @@ enum CopyEmImage {
         if b[0] == 0xFF, b[1] == 0xD8, b[2] == 0xFF { return "jpg" }
         if b == [0x47, 0x49, 0x46, 0x38] { return "gif" }
         if b == [0x49, 0x49, 0x2A, 0x00] || b == [0x4D, 0x4D, 0x00, 0x2A] { return "tiff" }
+        if d.count >= 12 {
+            let s = [UInt8](d.prefix(12))
+            // RIFF....WEBP
+            if s[0] == 0x52, s[1] == 0x49, s[2] == 0x46, s[3] == 0x46,
+               s[8] == 0x57, s[9] == 0x45, s[10] == 0x42, s[11] == 0x50 { return "webp" }
+            // ISO-BMFF box "....ftypBRND" → HEIC/AVIF/HEIF family.
+            if s[4] == 0x66, s[5] == 0x74, s[6] == 0x79, s[7] == 0x70 {
+                let brand = String(bytes: s[8..<12], encoding: .ascii) ?? ""
+                return brand.hasPrefix("avi") ? "avif" : "heic"
+            }
+        }
         return nil
     }
 
