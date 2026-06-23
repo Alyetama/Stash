@@ -76,6 +76,21 @@ struct SearchView: View {
         .frame(height: compact ? 24 : 30)
     }
 
+    @ViewBuilder private var clearButton: some View {
+        if !controller.query.isEmpty {
+            Button {
+                controller.query = ""
+                NotificationCenter.default.post(name: .focusSearchField, object: nil)
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: compact ? 13 : 15))
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.borderless)
+            .help("Clear search")
+        }
+    }
+
     private var modePicker: some View {
         Picker("", selection: $controller.mode) {
             ForEach(SearchMode.allCases) { Text($0.rawValue).tag($0) }
@@ -173,7 +188,7 @@ struct SearchView: View {
         if compact {
             // Two rows so the controls breathe in the narrow panel.
             VStack(spacing: 8) {
-                HStack(spacing: 10) { magnifier; searchFieldView; settingsButton }
+                HStack(spacing: 10) { magnifier; searchFieldView; clearButton; settingsButton }
                 HStack(spacing: 8) {
                     modePicker.frame(maxWidth: .infinity)
                     favoritesMenu; transformsButton; aiButton
@@ -184,7 +199,7 @@ struct SearchView: View {
             .padding(.bottom, 10)
         } else {
             HStack(spacing: 12) {
-                magnifier; searchFieldView; modePicker
+                magnifier; searchFieldView; clearButton; modePicker
                 favoritesMenu; transformsButton; aiButton; settingsButton
             }
             .padding(.horizontal, 16)
