@@ -87,6 +87,8 @@ final class SidecarDB {
         try? db.exec("ALTER TABLE entries ADD COLUMN img_w INTEGER NOT NULL DEFAULT 0;")
         try? db.exec("ALTER TABLE entries ADD COLUMN img_h INTEGER NOT NULL DEFAULT 0;")
         try? db.exec("ALTER TABLE entries ADD COLUMN ext TEXT;")
+        try? db.exec("ALTER TABLE entries ADD COLUMN hash INTEGER NOT NULL DEFAULT 0;")
+        try? db.exec("CREATE INDEX IF NOT EXISTS entries_hash ON entries(hash);")
     }
 
     private func createTables() throws {
@@ -104,10 +106,12 @@ final class SidecarDB {
                 kind      TEXT NOT NULL DEFAULT 'text',
                 img_w     INTEGER NOT NULL DEFAULT 0,
                 img_h     INTEGER NOT NULL DEFAULT 0,
-                ext       TEXT
+                ext       TEXT,
+                hash      INTEGER NOT NULL DEFAULT 0
             );
             CREATE INDEX entries_created ON entries(created);
             CREATE INDEX entries_source_pk ON entries(source_pk);
+            CREATE INDEX entries_hash ON entries(hash);
 
             CREATE VIRTUAL TABLE fts_trigram USING fts5(
                 text, content='entries', content_rowid='pk', tokenize='trigram');
@@ -132,35 +136,31 @@ final class SidecarDB {
     func commit() throws { try db.exec("COMMIT;") }
 
     private lazy var clipStmt = try! db.prepare("""
-        INSERT INTO entries(text, app, list, created, usecount, source, source_pk)
-        VALUES (?, ?, NULL, ?, 0, 'clipboard', NULL)
+        INSERT INTO entries(text, app, list, created, usecount, source, source_pk, hash)
+        VALUES (?, ?, NULL, ?, 0, 'clipboard', NULL, ?)
     """)
 
-    /// Record a freshly-copied clip. Returns false (no insert) if it's identical
-    /// to the most recent entry (de-dupes repeats and our own copy-outs).
+    /// Insert a freshly-copied text clip with its content hash. Returns the pk.
     @discardableResult
-    func insertClip(text: String, app: String?, at date: Date = Date()) throws -> Bool {
-        let capped = text.count > SidecarDB.clipTextCap
-            ? String(text.prefix(SidecarDB.clipTextCap)) : text
-        if let last = try latestText(), last == capped { return false }
+    func insertClip(text: String, app: String?, hash: Int64, at date: Date = Date()) throws -> Int64 {
         let s = clipStmt
         s.reset()
-        s.bind(1, capped)
+        s.bind(1, text)
         if let app { s.bind(2, app) } else { s.bindNull(2) }
         s.bind(3, date.timeIntervalSince1970)
+        s.bind(4, hash)
         try s.step()
-        return true
+        return db.lastInsertRowID
     }
 
     private lazy var imageStmt = try! db.prepare("""
-        INSERT INTO entries(text, app, list, created, usecount, source, source_pk, kind, img_w, img_h, ext)
-        VALUES (?, ?, NULL, ?, 0, ?, NULL, 'image', ?, ?, ?)
+        INSERT INTO entries(text, app, list, created, usecount, source, source_pk, kind, img_w, img_h, ext, hash)
+        VALUES (?, ?, NULL, ?, 0, ?, NULL, 'image', ?, ?, ?, ?)
     """)
 
-    /// Record an image clip. `label` is a searchable string (e.g. "Image 1280×720").
-    /// Returns the new row's pk so the caller can write the image files named by it.
+    /// Insert an image clip. Returns the new row's pk so the caller can write files.
     func insertImage(label: String, app: String?, w: Int, h: Int, ext: String,
-                     source: String = "clipboard", at date: Date = Date()) throws -> Int64 {
+                     hash: Int64, source: String = "clipboard", at date: Date = Date()) throws -> Int64 {
         let s = imageStmt
         s.reset()
         s.bind(1, label)
@@ -170,17 +170,18 @@ final class SidecarDB {
         s.bind(5, Int64(w))
         s.bind(6, Int64(h))
         s.bind(7, ext)
+        s.bind(8, hash)
         try s.step()
         return db.lastInsertRowID
     }
 
     private lazy var importStmt = try! db.prepare("""
-        INSERT INTO entries(text, app, list, created, usecount, source, source_pk)
-        VALUES (?, ?, ?, ?, ?, 'copyem', ?)
+        INSERT INTO entries(text, app, list, created, usecount, source, source_pk, hash)
+        VALUES (?, ?, ?, ?, ?, 'copyem', ?, ?)
     """)
 
     /// Insert a historical entry imported from Copy 'Em.
-    func insertImported(_ r: SourceRow) throws {
+    func insertImported(_ r: SourceRow, hash: Int64) throws {
         let s = importStmt
         s.reset()
         s.bind(1, r.text)
@@ -189,13 +190,34 @@ final class SidecarDB {
         s.bind(4, r.created)
         s.bind(5, r.useCount)
         s.bind(6, r.pk)         // source_pk = Copy 'Em Z_PK
+        s.bind(7, hash)
         try s.step()
     }
 
-    func latestText() throws -> String? {
-        let s = try db.prepare("SELECT text FROM entries ORDER BY created DESC, pk DESC LIMIT 1")
+    /// Find an existing entry with the same content (indexed by hash). For text,
+    /// `text` is verified to guard against rare hash collisions.
+    func findEntry(hash: Int64, kind: String, text: String?) -> Int64? {
+        guard let s = try? db.prepare("SELECT pk, text FROM entries WHERE hash = ? AND kind = ?") else { return nil }
         defer { s.finalize() }
-        return try s.step() ? s.string(0) : nil
+        s.bind(1, hash); s.bind(2, kind)
+        while (try? s.step()) == true {
+            if let text { if s.string(1) == text { return s.int(0) } }
+            else { return s.int(0) }
+        }
+        return nil
+    }
+
+    /// Move an entry to the top (newest) and bump its use-count.
+    func bumpToTop(pk: Int64, at date: Date = Date()) {
+        guard let s = try? db.prepare("UPDATE entries SET created = ?, usecount = usecount + 1 WHERE pk = ?") else { return }
+        defer { s.finalize() }
+        s.bind(1, date.timeIntervalSince1970); s.bind(2, pk); _ = try? s.step()
+    }
+
+    func updateHash(pk: Int64, hash: Int64) {
+        guard let s = try? db.prepare("UPDATE entries SET hash = ? WHERE pk = ?") else { return }
+        defer { s.finalize() }
+        s.bind(1, hash); s.bind(2, pk); _ = try? s.step()
     }
 
     func count() throws -> Int64 { try db.scalarInt("SELECT COUNT(*) FROM entries") ?? 0 }

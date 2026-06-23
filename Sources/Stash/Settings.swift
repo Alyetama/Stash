@@ -38,6 +38,11 @@ struct SettingsView: View {
                 Toggle("Launch Stash at login", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { LoginItem.set($0) }
                 Toggle("Pause clipboard capture", isOn: $indexer.capturePaused)
+                Toggle("Keep duplicate clips", isOn: $indexer.keepDuplicates)
+                Text(indexer.keepDuplicates
+                     ? "Every copy is saved as a separate entry."
+                     : "Re-copying something already saved moves it to the top instead of duplicating.")
+                    .font(.caption).foregroundStyle(.secondary)
                 LabeledContent("Global shortcut") {
                     HStack(spacing: 8) {
                         ShortcutField(display: hotkey.display) { code, mods, disp in

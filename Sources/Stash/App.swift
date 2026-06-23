@@ -124,11 +124,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.treatsFilePackagesAsDirectories = false   // a .cep package is one item
         panel.allowsMultipleSelection = false
 
+        // Checkbox: keep duplicate clips (off = de-duplicate, the default).
+        let dupCheckbox = NSButton(checkboxWithTitle: "Also import duplicate clips", target: nil, action: nil)
+        dupCheckbox.state = .off
+        dupCheckbox.toolTip = "When off, identical clips are imported only once. When on, every copy is kept (preserves copy history/frequency)."
+        let accessory = NSView(frame: NSRect(x: 0, y: 0, width: 360, height: 30))
+        dupCheckbox.frame = NSRect(x: 18, y: 6, width: 324, height: 18)
+        accessory.addSubview(dupCheckbox)
+        panel.accessoryView = accessory
+        panel.isAccessoryViewDisclosed = true
+
         NSApp.activate(ignoringOtherApps: true)
         panel.begin { [weak self] resp in
             guard resp == .OK, let url = panel.url, let self else { return }
             let store = Self.storedataPath(for: url)
-            self.indexer.importFromStore(store) { result in
+            let keepDuplicates = dupCheckbox.state == .on
+            self.indexer.importFromStore(store, keepDuplicates: keepDuplicates) { result in
                 let alert = NSAlert()
                 switch result {
                 case .success(let r):
