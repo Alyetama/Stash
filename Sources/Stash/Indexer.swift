@@ -67,18 +67,41 @@ final class Indexer: ObservableObject {
     private func startMonitor() {
         DispatchQueue.main.async { [weak self] in
             guard let self, self.monitor == nil else { return }
-            let m = ClipboardMonitor { [weak self] text, app in
-                self?.recordClip(text: text, app: app)
-            }
+            let m = ClipboardMonitor(
+                onText: { [weak self] text, app in self?.recordClip(text: text, app: app) },
+                onImage: { [weak self] data, ext, app in self?.recordImage(data: data, ext: ext, app: app) })
             m.start()
             self.monitor = m
         }
+    }
+
+    /// Called after we put something on the clipboard ourselves, so the monitor
+    /// doesn't re-record it as a new clip.
+    func ignoreClipboardChange() {
+        DispatchQueue.main.async { [weak self] in self?.monitor?.markCurrentAsSeen() }
     }
 
     private func recordClip(text: String, app: String?) {
         queue.async { [weak self] in
             guard let self, let sc = self.sidecar else { return }
             guard let inserted = try? sc.insertClip(text: text, app: app), inserted else { return }
+            self.publish {
+                self.indexedCount += 1
+                self.lastSync = Date()
+            }
+        }
+    }
+
+    private func recordImage(data: Data, ext: String, app: String?) {
+        queue.async { [weak self] in
+            guard let self, let sc = self.sidecar else { return }
+            guard let thumb = ImageThumb.make(from: data, maxPixel: 96) else { return }
+            let label = "Image · \(thumb.w)×\(thumb.h)"
+            guard let pk = try? sc.insertImage(label: label, app: app, w: thumb.w, h: thumb.h, ext: ext)
+            else { return }
+            try? FileManager.default.createDirectory(atPath: Sidecar.imagesDir, withIntermediateDirectories: true)
+            try? data.write(to: URL(fileURLWithPath: Sidecar.imageFile(pk: pk, ext: ext)))
+            try? thumb.png.write(to: URL(fileURLWithPath: Sidecar.thumbFile(pk: pk)))
             self.publish {
                 self.indexedCount += 1
                 self.lastSync = Date()

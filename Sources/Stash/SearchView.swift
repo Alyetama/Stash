@@ -239,9 +239,28 @@ private struct ResultRow: View {
             .overlay(RoundedRectangle(cornerRadius: 7, style: .continuous).strokeBorder(.white.opacity(0.15), lineWidth: 0.5))
     }
 
+    @ViewBuilder private var leading: some View {
+        if result.isImage {
+            let nsimg = result.thumbPath.flatMap { NSImage(contentsOfFile: $0) }
+            Group {
+                if let nsimg {
+                    Image(nsImage: nsimg).resizable().aspectRatio(contentMode: .fill)
+                } else {
+                    Image(systemName: "photo").font(.system(size: 18)).foregroundStyle(.secondary)
+                }
+            }
+            .frame(width: 48, height: 48)
+            .background(Color.black.opacity(0.2))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(.white.opacity(0.18), lineWidth: 0.5))
+        } else {
+            badge
+        }
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 11) {
-            badge
+            leading
             VStack(alignment: .leading, spacing: 3) {
                 Text(preview)
                     .lineLimit(2)

@@ -121,7 +121,8 @@ final class SearchController: ObservableObject {
 
     private func withFavorite(_ r: SearchResult, _ f: Bool) -> SearchResult {
         SearchResult(pk: r.pk, text: r.text, app: r.app, list: r.list, created: r.created,
-                     useCount: r.useCount, source: r.source, sourcePk: r.sourcePk, favorite: f)
+                     useCount: r.useCount, source: r.source, sourcePk: r.sourcePk, favorite: f,
+                     kind: r.kind, imgW: r.imgW, imgH: r.imgH, ext: r.ext)
     }
 
     func toggleFavorite(_ r: SearchResult) {
@@ -144,6 +145,12 @@ final class SearchController: ObservableObject {
             if selected >= results.count { selected = max(0, results.count - 1) }
         }
         indexer?.deleteEntry(pk: r.pk) {}
+        // Remove the image files backing an image clip.
+        if r.isImage {
+            for p in [r.imagePath, r.thumbPath].compactMap({ $0 }) {
+                try? FileManager.default.removeItem(atPath: p)
+            }
+        }
         updateStatus()
     }
 
@@ -162,6 +169,19 @@ final class SearchController: ObservableObject {
     func copySelected(done: @escaping () -> Void) {
         guard results.indices.contains(selected) else { done(); return }
         let r = results[selected]
+
+        // Image clips: put the image back on the clipboard (transforms don't apply).
+        if r.isImage {
+            let pb = NSPasteboard.general
+            pb.clearContents()
+            if let path = r.imagePath, let img = NSImage(contentsOfFile: path) {
+                pb.writeObjects([img])
+            }
+            indexer?.ignoreClipboardChange()
+            done()
+            return
+        }
+
         searchQueue.async { [weak self] in
             var text = r.text
             // Copy 'Em imports store only a capped copy — fetch the full text from
@@ -177,6 +197,7 @@ final class SearchController: ObservableObject {
                 let pb = NSPasteboard.general
                 pb.clearContents()
                 pb.setString(text, forType: .string)
+                self?.indexer?.ignoreClipboardChange()
                 done()
             }
         }

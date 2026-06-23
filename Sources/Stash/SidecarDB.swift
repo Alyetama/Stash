@@ -18,7 +18,15 @@ struct SearchResult: Identifiable {
     let source: String?     // "clipboard" | "copyem"
     let sourcePk: Int64?    // Copy 'Em Z_PK for imported rows (for full-text fetch)
     let favorite: Bool
+    let kind: String        // "text" | "image"
+    let imgW: Int64
+    let imgH: Int64
+    let ext: String?        // image file extension for image rows (e.g. "png")
     var id: Int64 { pk }
+
+    var isImage: Bool { kind == "image" }
+    var imagePath: String? { isImage ? Sidecar.imageFile(pk: pk, ext: ext ?? "png") : nil }
+    var thumbPath: String? { isImage ? Sidecar.thumbFile(pk: pk) : nil }
 }
 
 /// Default store location, in this app's own Application Support folder.
@@ -28,6 +36,9 @@ enum Sidecar {
             + "/Library/Application Support/Stash"
     }
     static var dbPath: String { directory + "/index.db" }
+    static var imagesDir: String { directory + "/images" }
+    static func imageFile(pk: Int64, ext: String) -> String { imagesDir + "/\(pk).\(ext)" }
+    static func thumbFile(pk: Int64) -> String { imagesDir + "/\(pk)_thumb.png" }
 }
 
 /// Owns the writable connection to the app's clipboard-history database.
@@ -37,7 +48,7 @@ final class SidecarDB {
 
     static let schemaVersion = 2
     static let clipTextCap = 1_000_000   // self-captured clips stored in full up to this
-    static let cols = "e.pk, e.text, e.app, e.list, e.created, e.usecount, e.source, e.source_pk, e.favorite"
+    static let cols = "e.pk, e.text, e.app, e.list, e.created, e.usecount, e.source, e.source_pk, e.favorite, e.kind, e.img_w, e.img_h, e.ext"
 
     init() throws {
         try FileManager.default.createDirectory(
@@ -69,9 +80,13 @@ final class SidecarDB {
             try createTables()
             try setMeta("schema_version", String(SidecarDB.schemaVersion))
         }
-        // Additive migrations (never wipe data): add the favorite flag if missing.
+        // Additive migrations (never wipe data).
         try? db.exec("ALTER TABLE entries ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0;")
         try? db.exec("CREATE INDEX IF NOT EXISTS entries_favorite ON entries(favorite);")
+        try? db.exec("ALTER TABLE entries ADD COLUMN kind TEXT NOT NULL DEFAULT 'text';")
+        try? db.exec("ALTER TABLE entries ADD COLUMN img_w INTEGER NOT NULL DEFAULT 0;")
+        try? db.exec("ALTER TABLE entries ADD COLUMN img_h INTEGER NOT NULL DEFAULT 0;")
+        try? db.exec("ALTER TABLE entries ADD COLUMN ext TEXT;")
     }
 
     private func createTables() throws {
@@ -85,7 +100,11 @@ final class SidecarDB {
                 usecount  INTEGER,
                 source    TEXT,
                 source_pk INTEGER,
-                favorite  INTEGER NOT NULL DEFAULT 0
+                favorite  INTEGER NOT NULL DEFAULT 0,
+                kind      TEXT NOT NULL DEFAULT 'text',
+                img_w     INTEGER NOT NULL DEFAULT 0,
+                img_h     INTEGER NOT NULL DEFAULT 0,
+                ext       TEXT
             );
             CREATE INDEX entries_created ON entries(created);
             CREATE INDEX entries_source_pk ON entries(source_pk);
@@ -131,6 +150,27 @@ final class SidecarDB {
         s.bind(3, date.timeIntervalSince1970)
         try s.step()
         return true
+    }
+
+    private lazy var imageStmt = try! db.prepare("""
+        INSERT INTO entries(text, app, list, created, usecount, source, source_pk, kind, img_w, img_h, ext)
+        VALUES (?, ?, NULL, ?, 0, 'clipboard', NULL, 'image', ?, ?, ?)
+    """)
+
+    /// Record an image clip. `text` is a searchable label (e.g. "Image 1280×720").
+    /// Returns the new row's pk so the caller can write the image files named by it.
+    func insertImage(label: String, app: String?, w: Int, h: Int, ext: String,
+                     at date: Date = Date()) throws -> Int64 {
+        let s = imageStmt
+        s.reset()
+        s.bind(1, label)
+        if let app { s.bind(2, app) } else { s.bindNull(2) }
+        s.bind(3, date.timeIntervalSince1970)
+        s.bind(4, Int64(w))
+        s.bind(5, Int64(h))
+        s.bind(6, ext)
+        try s.step()
+        return db.lastInsertRowID
     }
 
     private lazy var importStmt = try! db.prepare("""
@@ -315,6 +355,7 @@ final class SearchEngine {
         SearchResult(
             pk: s.int(0), text: text, app: s.string(2), list: s.string(3),
             created: s.double(4), useCount: s.int(5), source: s.string(6),
-            sourcePk: s.isNull(7) ? nil : s.int(7), favorite: s.int(8) != 0)
+            sourcePk: s.isNull(7) ? nil : s.int(7), favorite: s.int(8) != 0,
+            kind: s.string(9) ?? "text", imgW: s.int(10), imgH: s.int(11), ext: s.string(12))
     }
 }

@@ -64,6 +64,8 @@ final class SQLite {
 
     var lastErrorMessage: String { String(cString: sqlite3_errmsg(handle)) }
 
+    var lastInsertRowID: Int64 { sqlite3_last_insert_rowid(handle) }
+
     /// Run one or more statements with no result rows.
     func exec(_ sql: String) throws {
         var err: UnsafeMutablePointer<CChar>?

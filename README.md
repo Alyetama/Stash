@@ -33,6 +33,7 @@ Everything is **100% local** — no network access, no telemetry. Your clips nev
 
 **Capture & search**
 - 📋 **Live capture** — every text clip you copy is saved automatically, tagged with the source app and time.
+- 🖼️ **Image clips** — copied images are captured too, shown as thumbnails in results; pick one to copy the image back to the clipboard.
 - ⚡ **Instant search**, three modes you can switch on the fly:
   - **Substring** — match anywhere inside an entry (FTS5 trigram, ≥3 chars).
   - **Words** — whole-word & prefix matching, relevance-ranked (FTS5 + bm25).
