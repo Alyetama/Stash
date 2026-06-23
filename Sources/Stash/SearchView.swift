@@ -251,16 +251,23 @@ struct SearchView: View {
     // MARK: footer
 
     private var footer: some View {
-        HStack {
-            Text(controller.status.isEmpty
-                 ? "\(indexer.indexedCount.formatted()) indexed"
-                 : controller.status)
+        HStack(spacing: 8) {
+            // Total clips, always shown.
+            Text("\(indexer.indexedCount.formatted()) clips")
                 .font(.caption).foregroundStyle(.secondary)
-            Spacer()
-            Text("click or ↵ copies · ↑↓ navigate · esc close")
+                .lineLimit(1).fixedSize()
+            // Dynamic status (result count / timing) — full layout only.
+            if !compact, !controller.status.isEmpty {
+                Text("· \(controller.status)")
+                    .font(.caption).foregroundStyle(.tertiary)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 8)
+            Text(compact ? "↵ copy · esc close" : "click or ↵ copies · ↑↓ navigate · esc close")
                 .font(.caption).foregroundStyle(.tertiary)
+                .lineLimit(1).fixedSize()
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, compact ? 12 : 16)
         .padding(.vertical, 8)
     }
 }
