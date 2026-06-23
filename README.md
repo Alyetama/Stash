@@ -19,6 +19,10 @@ Stash quietly records everything you copy and lets you find any past clip in mil
 
 ---
 
+<div align="center">
+<img src="docs/assets/screenshot.png" width="760" alt="Stash search panel — frosted menu-bar overlay with instant results">
+</div>
+
 ## Why Stash?
 
 Most clipboard managers crawl once your history grows large — their search does an unindexed scan on every keystroke. Stash keeps the text in **SQLite FTS5** indexes, so search stays **sub-millisecond even past a million entries**. It was originally built to rescue a 560k-entry history whose host app took *seconds* per search; Stash returns the same queries in **single-digit milliseconds**.
