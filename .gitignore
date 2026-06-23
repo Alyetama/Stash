@@ -15,10 +15,11 @@ build/
 *.xcscmblueprint
 
 # ───────── Build output / bundles ─────────
-# (the released disk image under dist/ and docs/ is committed on purpose)
+# The .dmg is a build artifact — distribute via GitHub Releases, not git.
 *.app/
 *.iconset/
 *.dSYM/
+*.dmg
 *.dmg.tmp
 
 # ───────── macOS ─────────

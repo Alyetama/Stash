@@ -68,7 +68,7 @@ Everything is **local-first** — no telemetry, and your clips never leave your 
 
 ## Install
 
-1. Download and open **`dist/Stash.dmg`** (or grab it from Releases).
+1. Download **Stash.dmg** from the [latest release](https://github.com/Alyetama/Stash/releases/latest) and open it.
 2. Drag **Stash** onto **Applications**.
 3. Launch it from Applications or Spotlight — a clipboard icon appears in the menu bar.
 4. Press <kbd>⌃</kbd><kbd>⌥</kbd><kbd>C</kbd> and start searching.
