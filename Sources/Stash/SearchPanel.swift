@@ -139,7 +139,10 @@ final class PanelController: NSObject, NSWindowDelegate {
                               },
                               onClose: { [weak self] in self?.hide() },
                               compact: compact)
-        panel.contentView = NSHostingView(rootView: root)
+        let hosting = NSHostingView(rootView: root)
+        // Don't inset the content below the (hidden) title bar — removes the gap at the top.
+        if #available(macOS 13.3, *) { hosting.safeAreaRegions = [] }
+        panel.contentView = hosting
         return panel
     }
 
