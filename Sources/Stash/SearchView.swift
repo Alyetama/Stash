@@ -4,8 +4,10 @@ struct SearchView: View {
     @ObservedObject var controller: SearchController
     @ObservedObject var indexer: Indexer
     @ObservedObject var transforms: TransformSettings
+    @ObservedObject var ai: AISettings
     var onClose: () -> Void
     @State private var showTransforms = false
+    @State private var showAI = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -69,6 +71,19 @@ struct SearchView: View {
             .help("Copy transformations")
             .popover(isPresented: $showTransforms, arrowEdge: .bottom) {
                 TransformsView(settings: transforms)
+            }
+
+            // AI regex generator — only in the Regex tab.
+            if controller.mode == .regex {
+                Button { showAI.toggle() } label: {
+                    Image(systemName: "sparkles")
+                        .foregroundStyle(ai.enabled ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.secondary))
+                }
+                .buttonStyle(.borderless)
+                .help("Generate a regex with AI")
+                .popover(isPresented: $showAI, arrowEdge: .bottom) {
+                    AIRegexView(ai: ai, controller: controller, onClose: { showAI = false })
+                }
             }
         }
         .padding(.horizontal, 16)

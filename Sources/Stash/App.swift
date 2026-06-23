@@ -16,7 +16,8 @@ struct StashApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let indexer = Indexer()
     private let transforms = TransformSettings()
-    private lazy var controller = SearchController(sourcePath: indexer.sourcePath, indexer: indexer, transforms: transforms)
+    private let aiSettings = AISettings()
+    private lazy var controller = SearchController(sourcePath: indexer.sourcePath, indexer: indexer, transforms: transforms, ai: aiSettings)
     private lazy var panelController = PanelController(controller: controller, indexer: indexer)
     private var statusItem: NSStatusItem!
 

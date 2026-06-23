@@ -15,6 +15,7 @@ final class SearchController: ObservableObject {
 
     let sourcePath: String
     let transforms: TransformSettings
+    let ai: AISettings
     private weak var indexer: Indexer?
 
     private let searchQueue = DispatchQueue(label: "com.local.stash.search")
@@ -25,10 +26,13 @@ final class SearchController: ObservableObject {
     private var firstPageMS: Double = 0
     private let lock = NSLock()
 
-    init(sourcePath: String, indexer: Indexer? = nil, transforms: TransformSettings = TransformSettings()) {
+    init(sourcePath: String, indexer: Indexer? = nil,
+         transforms: TransformSettings = TransformSettings(),
+         ai: AISettings = AISettings()) {
         self.sourcePath = sourcePath
         self.indexer = indexer
         self.transforms = transforms
+        self.ai = ai
     }
 
     /// Run the current query from the top (or show recent items when it's empty).

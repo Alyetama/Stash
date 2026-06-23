@@ -27,7 +27,7 @@ Stash quietly records everything you copy and lets you find any past clip in mil
 
 Most clipboard managers crawl once your history grows large — their search does an unindexed scan on every keystroke. Stash keeps the text in **SQLite FTS5** indexes, so search stays **sub-millisecond even past a million entries**. It was originally built to rescue a 560k-entry history whose host app took *seconds* per search; Stash returns the same queries in **single-digit milliseconds**.
 
-Everything is **100% local** — no network access, no telemetry. Your clips never leave your Mac.
+Everything is **local-first** — no telemetry, and your clips never leave your Mac. The only feature that makes a network call is the **opt-in** AI-regex helper (off until you add a key).
 
 ## Features
 
@@ -37,7 +37,7 @@ Everything is **100% local** — no network access, no telemetry. Your clips nev
 - ⚡ **Instant search**, three modes you can switch on the fly:
   - **Substring** — match anywhere inside an entry (FTS5 trigram, ≥3 chars).
   - **Words** — whole-word & prefix matching, relevance-ranked (FTS5 + bm25).
-  - **Regex** — full regular-expression search.
+  - **Regex** — full regular-expression search, with an optional **✨ AI generator**: add an [OpenCode](https://opencode.ai) API key and describe a pattern in plain English to have a free fast model write the regex for you.
 - 🕘 **Recent first** — opens to your latest clips; just start typing to search.
 - ♾️ **Endless results** — pages in 200 at a time, so you can scroll through every match.
 
