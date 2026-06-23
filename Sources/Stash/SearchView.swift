@@ -19,6 +19,7 @@ struct SearchView: View {
     @State private var showNewGroup = false
     @State private var newGroupName = ""
     @State private var newGroupTarget: SearchResult?
+    @State private var rowTextWidth: CGFloat = 0   // measured once for the whole list
 
     var body: some View {
         VStack(spacing: 0) {
@@ -238,7 +239,7 @@ struct SearchView: View {
             ScrollView {
                 LazyVStack(spacing: 1) {
                     ForEach(Array(controller.results.enumerated()), id: \.element.pk) { idx, r in
-                        ResultRow(result: r, selected: idx == controller.selected)
+                        ResultRow(result: r, selected: idx == controller.selected, textWidth: rowTextWidth)
                             .id(r.pk)
                             .contentShape(Rectangle())
                             .onTapGesture {
@@ -281,6 +282,12 @@ struct SearchView: View {
                 }
                 .padding(.vertical, 5)
             }
+            // Measure the list width once (not per row) for the truncation check.
+            .background(GeometryReader { g in
+                Color.clear
+                    .onAppear { rowTextWidth = max(40, g.size.width - 116) }
+                    .onChange(of: g.size.width) { rowTextWidth = max(40, $0 - 116) }
+            })
             .onChange(of: controller.selected) { sel in
                 guard controller.results.indices.contains(sel) else { return }
                 withAnimation(.easeOut(duration: 0.1)) {
@@ -384,18 +391,49 @@ enum AppIconResolver {
     }
 }
 
+/// Per-row memoization so scrolling doesn't redo expensive work (disk thumbnail
+/// loads, link detection, text measurement) on every SwiftUI redraw.
+private enum RowCache {
+    static var thumbs: [String: NSImage] = [:]
+    static var links: [Int64: [NSRange]] = [:]
+    static var lines: [String: Int] = [:]
+
+    static func thumb(_ path: String) -> NSImage? {
+        if let c = thumbs[path] { return c }
+        guard let img = NSImage(contentsOfFile: path) else { return nil }
+        thumbs[path] = img
+        return img
+    }
+    static func linkRanges(pk: Int64, text: String, detector: NSDataDetector?) -> [NSRange] {
+        if let c = links[pk] { return c }
+        let ns = text as NSString
+        let r = detector?.matches(in: text, range: NSRange(location: 0, length: ns.length)).map(\.range) ?? []
+        links[pk] = r
+        return r
+    }
+    static func lineCount(pk: Int64, width: CGFloat, _ compute: () -> Int) -> Int {
+        let key = "\(pk):\(Int(width))"
+        if let c = lines[key] { return c }
+        let n = compute()
+        lines[key] = n
+        return n
+    }
+}
+
 private struct ResultRow: View {
     let result: SearchResult
     let selected: Bool
+    var textWidth: CGFloat = 0     // measured once at the list level, not per row
     @Environment(\.appTheme) private var theme
     @State private var hovering = false
     @State private var expanded = false
-    @State private var availWidth: CGFloat = 0
 
     /// True only when the 2-line-limited preview is actually truncated.
     private var isExpandable: Bool {
-        guard !result.isImage, availWidth > 1 else { return false }
-        return Self.lineCount(of: preview, width: availWidth) > 2
+        guard !result.isImage, textWidth > 1 else { return false }
+        return RowCache.lineCount(pk: result.pk, width: textWidth) {
+            Self.lineCount(of: preview, width: textWidth)
+        } > 2
     }
 
     /// How many lines `text` occupies at `width` with the row font (counts wraps
@@ -417,8 +455,16 @@ private struct ResultRow: View {
         let f = RelativeDateTimeFormatter(); f.unitsStyle = .abbreviated; return f
     }()
 
+    /// A capped slice of the (possibly megabyte-sized) clip for display. We only
+    /// ever show ~2 lines (or a modest expanded view), so rendering/measuring the
+    /// full text is what made scrolling lag. The full text is still used on copy.
     private var preview: String {
-        result.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cap = expanded ? 4000 : 320
+        let head = result.text.prefix(cap + 1)        // O(cap), avoids counting the whole string
+        let truncated = head.count > cap
+        let body = String(truncated ? head.prefix(cap) : head)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return truncated ? body + "…" : body
     }
 
     private static let linkDetector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
@@ -427,11 +473,11 @@ private struct ResultRow: View {
     private var styledPreview: AttributedString {
         let s = preview
         var attr = AttributedString(s)
-        guard let detector = Self.linkDetector else { return attr }
-        let ns = s as NSString
+        let ranges = RowCache.linkRanges(pk: result.pk, text: s, detector: Self.linkDetector)
+        guard !ranges.isEmpty else { return attr }   // common case: no URLs
         let linkColor = selected ? Color.white : Color(red: 0.30, green: 0.55, blue: 1.0)
-        for m in detector.matches(in: s, range: NSRange(location: 0, length: ns.length)) {
-            guard let r = Range(m.range, in: s) else { continue }
+        for nsr in ranges {
+            guard let r = Range(nsr, in: s) else { continue }
             let lo = s.distance(from: s.startIndex, to: r.lowerBound)
             let hi = s.distance(from: s.startIndex, to: r.upperBound)
             let aLo = attr.index(attr.startIndex, offsetByCharacters: lo)
@@ -473,7 +519,7 @@ private struct ResultRow: View {
 
     @ViewBuilder private var leading: some View {
         if result.isImage {
-            let nsimg = result.thumbPath.flatMap { NSImage(contentsOfFile: $0) }
+            let nsimg = result.thumbPath.flatMap { RowCache.thumb($0) }
             Group {
                 if let nsimg {
                     Image(nsImage: nsimg).resizable().aspectRatio(contentMode: .fill)
@@ -506,11 +552,6 @@ private struct ResultRow: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(GeometryReader { g in
-                Color.clear
-                    .onAppear { availWidth = g.size.width }
-                    .onChange(of: g.size.width) { availWidth = $0 }
-            })
 
             VStack(spacing: 8) {
                 if result.favorite {

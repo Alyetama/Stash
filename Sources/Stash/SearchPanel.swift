@@ -137,8 +137,13 @@ final class PanelController: NSObject, NSWindowDelegate {
                                   if hold {
                                       self.holdOpen = true
                                   } else {
-                                      // Brief grace so the panel survives the prompt/popover dismissal transition.
-                                      DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { self.holdOpen = false }
+                                      // Brief grace for the dismissal transition, then release the
+                                      // hold. If focus has moved off the panel (the popover was
+                                      // dismissed by clicking elsewhere), close the panel now.
+                                      DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                                          self.holdOpen = false
+                                          if let p = self.panel, p.isVisible, !p.isKeyWindow { self.hide() }
+                                      }
                                   }
                               },
                               onClose: { [weak self] in self?.hide() },
