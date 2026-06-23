@@ -42,4 +42,12 @@ enum Keychain {
     static func delete(account: String) {
         SecItemDelete(baseQuery(account) as CFDictionary)
     }
+
+    /// True if an item exists, WITHOUT reading its secret data — so it never
+    /// triggers the "allow access" consent prompt (that only fires on data reads).
+    static func exists(account: String) -> Bool {
+        var query = baseQuery(account)
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+        return SecItemCopyMatching(query as CFDictionary, nil) == errSecSuccess
+    }
 }

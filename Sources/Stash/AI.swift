@@ -3,9 +3,10 @@ import SwiftUI
 /// Persisted settings for the optional AI-assisted regex feature.
 /// The key is the user's own OpenCode API key, stored locally in UserDefaults.
 final class AISettings: ObservableObject {
-    /// Stored in the macOS Keychain (encrypted at rest), not in UserDefaults.
-    @Published var apiKey: String { didSet { Keychain.set(apiKey, account: Self.keyAccount) } }
-    @Published var model: String  { didSet { d.set(model, forKey: "ai.model") } }
+    /// Whether a key is saved — determined by a prompt-free existence check, NOT
+    /// by reading the secret, so the app never shows a Keychain prompt at launch.
+    @Published private(set) var hasKey: Bool
+    @Published var model: String { didSet { d.set(model, forKey: "ai.model") } }
 
     /// OpenCode Zen — OpenAI-compatible chat-completions endpoint.
     let endpoint = "https://opencode.ai/zen/v1/chat/completions"
@@ -22,19 +23,35 @@ final class AISettings: ObservableObject {
 
     private static let keyAccount = "opencode.apiKey"
     private let d = UserDefaults.standard
+    private var cachedKey: String?   // populated lazily on first real use
 
     init() {
-        // One-time migration: move any key from the old plaintext plist into the Keychain.
+        // One-time migration: move any key from the old plaintext plist into the
+        // Keychain (writes don't prompt; we never read the secret here).
         if let legacy = d.string(forKey: "ai.apiKey"), !legacy.isEmpty {
             Keychain.set(legacy, account: Self.keyAccount)
             d.removeObject(forKey: "ai.apiKey")
         }
-        apiKey = Keychain.get(account: Self.keyAccount) ?? ""
+        hasKey = Keychain.exists(account: Self.keyAccount)   // no prompt
         let stored = d.string(forKey: "ai.model") ?? "deepseek-v4-flash-free"
         model = Self.freeModels.contains(where: { $0.id == stored }) ? stored : "deepseek-v4-flash-free"
     }
 
-    var enabled: Bool { !apiKey.trimmingCharacters(in: .whitespaces).isEmpty }
+    var enabled: Bool { hasKey }
+
+    /// Read the secret (may prompt the first time) — only call when the user is
+    /// actively using the AI feature.
+    func currentKey() -> String {
+        if cachedKey == nil { cachedKey = Keychain.get(account: Self.keyAccount) ?? "" }
+        return cachedKey ?? ""
+    }
+
+    func setKey(_ value: String) {
+        let v = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        Keychain.set(v, account: Self.keyAccount)
+        cachedKey = v
+        hasKey = !v.isEmpty
+    }
 }
 
 enum AIError: Error {
@@ -62,7 +79,7 @@ struct AIService {
     """
 
     func generateRegex(from prompt: String, completion: @escaping (Result<String, Error>) -> Void) {
-        let key = settings.apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        let key = settings.currentKey().trimmingCharacters(in: .whitespacesAndNewlines)
         guard !key.isEmpty else { return completion(.failure(AIError.noKey)) }
         guard let url = URL(string: settings.endpoint) else { return completion(.failure(AIError.badURL)) }
 
@@ -124,32 +141,33 @@ struct AIRegexView: View {
     @State private var error = ""
     @State private var showKey = false
     @State private var editingKey = false
+    @State private var keyInput = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Generate regex with AI").font(.headline)
 
-            if ai.enabled && !editingKey {
+            if ai.hasKey && !editingKey {
                 // Key already saved — show a compact status with Edit / Remove.
                 HStack(spacing: 8) {
                     Image(systemName: "key.fill").foregroundStyle(.green)
                     Text("API key set").font(.callout)
                     Spacer()
-                    Button("Edit") { showKey = false; editingKey = true }.buttonStyle(.link)
-                    Button("Remove", role: .destructive) { ai.apiKey = ""; editingKey = false }.buttonStyle(.link)
+                    Button("Edit") { keyInput = ai.currentKey(); showKey = false; editingKey = true }.buttonStyle(.link)
+                    Button("Remove", role: .destructive) { ai.setKey(""); keyInput = ""; editingKey = false }.buttonStyle(.link)
                 }
             } else {
                 HStack(spacing: 6) {
                     Group {
-                        if showKey { TextField("OpenCode API key", text: $ai.apiKey) }
-                        else { SecureField("OpenCode API key", text: $ai.apiKey) }
+                        if showKey { TextField("OpenCode API key", text: $keyInput) }
+                        else { SecureField("OpenCode API key", text: $keyInput) }
                     }
                     .textFieldStyle(.roundedBorder)
                     Button { showKey.toggle() } label: { Image(systemName: showKey ? "eye.slash" : "eye") }
                         .buttonStyle(.borderless)
-                    if ai.enabled {
-                        Button("Done") { editingKey = false }.buttonStyle(.link)
-                    }
+                    Button("Save") { ai.setKey(keyInput); editingKey = false }
+                        .buttonStyle(.link)
+                        .disabled(keyInput.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
 
