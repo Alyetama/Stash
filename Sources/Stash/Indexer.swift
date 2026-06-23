@@ -124,10 +124,14 @@ final class Indexer: ObservableObject {
                     self.message = "Importing \(total.formatted()) entries…"
                 }
 
-                // Content-hash sets of what's already in Stash, to skip duplicates.
+                // Content-hash sets of what's already in Stash (to skip duplicates),
+                // plus a map of previously-truncated imports so re-import upgrades
+                // them to full text instead of adding a second copy.
+                let legacyCap = SourceStore.legacyTextCap
                 var seenText = Set<UInt64>()
                 var seenImage = Set<UInt64>()
-                if let s = try? sc.db.prepare("SELECT text, kind, pk, ext FROM entries") {
+                var truncated = [UInt64: Int64]()   // hash(text) -> pk for capped 'copyem' rows
+                if let s = try? sc.db.prepare("SELECT text, kind, pk, ext, source FROM entries") {
                     while (try? s.step()) == true {
                         if s.string(1) == "image" {
                             let pk = s.int(2), ext = s.string(3) ?? "png"
@@ -135,24 +139,34 @@ final class Indexer: ObservableObject {
                                 seenImage.insert(Self.fnv1a(d))
                             }
                         } else if let t = s.string(0) {
-                            seenText.insert(Self.fnv1a(t))
+                            let h = Self.fnv1a(t)
+                            seenText.insert(h)
+                            if s.string(4) == "copyem", t.count == legacyCap { truncated[h] = s.int(2) }
                         }
                     }
                     s.finalize()
                 }
 
-                // Text entries — skip ones whose content already exists.
-                var inBatch = 0, added = 0, skipped = 0
+                // Text entries — skip exact duplicates; upgrade truncated ones to full.
+                var inBatch = 0, added = 0
                 try sc.begin()
                 try source.forEachRow(afterPK: 0) { row in
                     let h = Self.fnv1a(row.text)
-                    if seenText.contains(h) { skipped += 1; return }
+                    if seenText.contains(h) { return }   // already have this exact content
+                    if row.text.count > legacyCap {
+                        let ph = Self.fnv1a(String(row.text.prefix(legacyCap)))
+                        if let oldPk = truncated[ph] {   // an earlier 16 KB-capped copy → replace it
+                            try? sc.delete(pk: oldPk)
+                            truncated[ph] = nil
+                            seenText.remove(ph)
+                        }
+                    }
                     do { try sc.insertImported(row) } catch { return }
                     seenText.insert(h)
                     inBatch += 1; added += 1
                     if inBatch >= self.commitBatch {
                         try? sc.commit(); try? sc.begin(); inBatch = 0
-                        let d = added + skipped; self.publish { self.buildDone = d; self.indexedCount = Int((try? sc.count()) ?? 0) }
+                        let d = added; self.publish { self.buildDone = d; self.indexedCount = Int((try? sc.count()) ?? 0) }
                     }
                 }
                 try sc.commit()

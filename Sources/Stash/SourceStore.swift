@@ -17,9 +17,13 @@ final class SourceStore {
     /// Core Data reference date (2001-01-01) offset to unix epoch.
     static let coreDataEpoch: Double = 978_307_200
 
-    /// Max characters of an entry stored in the index. The full text is fetched
-    /// on demand from the source when the user copies a result.
-    static let indexTextCap = 16_384
+    /// Max characters stored per imported entry. Matches the self-capture cap so
+    /// imports keep full text (the app no longer reads Copy 'Em on copy). The 1 MB
+    /// ceiling just guards against pathological multi-megabyte pastes bloating FTS.
+    static let indexTextCap = 1_000_000
+
+    /// The old 16 KB cap — used to detect & upgrade previously-truncated imports.
+    static let legacyTextCap = 16_384
 
     private let db: SQLite
 
