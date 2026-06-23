@@ -125,14 +125,16 @@ struct SearchView: View {
                 }
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 10)
+            .padding(.top, 16)
+            .padding(.bottom, 10)
         } else {
             HStack(spacing: 12) {
                 magnifier; searchFieldView; modePicker
                 favoritesMenu; transformsButton; aiButton; settingsButton
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.top, 18)
+            .padding(.bottom, 12)
         }
     }
 
