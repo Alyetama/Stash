@@ -103,6 +103,21 @@
     background:linear-gradient(135deg,var(--indigo),var(--violet));color:#fff;font-weight:600;font-size:.92rem;
     padding:.7em 1.2em;border-radius:11px;box-shadow:0 12px 40px rgba(91,56,220,.5);opacity:0;pointer-events:none;transition:.22s}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .modal{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;
+    background:rgba(8,9,18,.72);padding:20px}
+  .modal.show{display:flex}
+  .modal .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    max-width:520px;width:100%;padding:26px 28px;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+  .modal h3{font-size:1.4rem;margin-bottom:6px}
+  .modal .why{color:var(--muted);font-size:.92rem;margin-bottom:18px}
+  .modal ol{margin:0 0 18px;padding-left:0;list-style:none;counter-reset:s}
+  .modal li{counter-increment:s;position:relative;padding:8px 0 8px 40px;font-size:.98rem}
+  .modal li::before{content:counter(s);position:absolute;left:0;top:7px;width:26px;height:26px;border-radius:8px;
+    background:linear-gradient(135deg,var(--indigo),var(--violet));color:#fff;font-weight:700;font-size:.85rem;
+    display:flex;align-items:center;justify-content:center}
+  .modal li b{color:var(--text)}
+  .modal .pill{background:#252a44;border:1px solid var(--line);border-radius:6px;padding:.05em .45em;font-size:.9em}
+  .modal .row{display:flex;gap:10px;justify-content:flex-end;margin-top:4px}
 </style>
 </head>
 <body>
@@ -135,7 +150,7 @@
     <h1>Stash</h1>
     <p class="tag">Find <b>anything you've ever copied</b> in milliseconds. A native macOS menu-bar clipboard manager with instant full-text search that stays fast at a scale of <b>millions</b> of entries. Works on its own — no other app required.</p>
     <div class="cta">
-      <a class="btn btn-primary" href="https://github.com/Alyetama/Stash/releases/latest/download/Stash.dmg">⤓ Download for macOS</a>
+      <a class="btn btn-primary" id="dl" href="https://github.com/Alyetama/Stash/releases/latest/download/Stash.dmg" onclick="showInstall()">⤓ Download for macOS</a>
       <a class="btn btn-ghost" href="https://github.com/Alyetama/Stash" target="_blank" rel="noopener">View source</a>
     </div>
     <p class="sub">macOS 13+ · Apple Silicon &amp; Intel · 100% local · summon anywhere with <span class="kbd">⌃⌥C</span></p>
@@ -225,6 +240,22 @@
   </div>
 </footer>
 
+<div class="modal" id="install" onclick="if(event.target===this)hideInstall()">
+  <div class="card">
+    <h3>Opening Stash the first time</h3>
+    <p class="why">Stash is open-source and ad-hoc signed (no paid Apple Developer ID), so macOS blocks it on first launch. Here's the one-time fix:</p>
+    <ol>
+      <li>Open the downloaded <b>Stash.dmg</b> and drag <b>Stash</b> into <b>Applications</b>.</li>
+      <li>Open <b>Stash</b> from Applications. macOS will say it "can't be opened" — that's expected.</li>
+      <li>Go to <span class="pill">System Settings</span> › <span class="pill">Privacy &amp; Security</span>, scroll down, and click <b>Open Anyway</b> next to the message about Stash.</li>
+      <li>Confirm with Touch ID or your password. Stash opens — a clipboard icon appears in your menu bar.</li>
+    </ol>
+    <div class="row">
+      <button class="btn btn-ghost" onclick="hideInstall()">Got it</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast">Copied to clipboard</div>
 
 <script>
@@ -250,6 +281,11 @@ const CLIPS = [
 //  words     "log" -> only word-starts (login, logs, log) — excludes blog & catalog
 //  regex \d{4}-\d{2} -> pattern match on dates / order numbers
 const EXAMPLES = { substring:'log', words:'log', regex:'\\d{4}-\\d{2}' };
+
+const installModal = document.getElementById('install');
+function showInstall(){ installModal.classList.add('show'); }
+function hideInstall(){ installModal.classList.remove('show'); }
+document.addEventListener('keydown', e => { if(e.key==='Escape') hideInstall(); });
 
 const q = document.getElementById('q');
 const modesEl = document.getElementById('modes');

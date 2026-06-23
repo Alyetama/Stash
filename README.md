@@ -71,10 +71,18 @@ Everything is **local-first** — no telemetry, and your clips never leave your 
 
 1. Download **Stash.dmg** from the [latest release](https://github.com/Alyetama/Stash/releases/latest) and open it.
 2. Drag **Stash** onto **Applications**.
-3. Launch it from Applications or Spotlight — a clipboard icon appears in the menu bar.
-4. Press <kbd>⌃</kbd><kbd>⌥</kbd><kbd>C</kbd> and start searching.
+3. Launch it from Applications or Spotlight (see the important note below for the first launch).
+4. Press <kbd>⌃</kbd><kbd>⌥</kbd><kbd>C</kbd> and start searching — a clipboard icon also appears in the menu bar.
 
-> Stash is ad-hoc signed (no paid Developer ID). On first launch macOS Gatekeeper may warn — right-click the app and choose **Open**, or allow it under **System Settings → Privacy & Security**.
+> [!IMPORTANT]
+> **First launch — macOS will block Stash.** Stash is open-source and ad-hoc signed (no paid Apple Developer ID), so Gatekeeper stops it the first time. This is a one-time fix:
+>
+> 1. Open **Stash** from Applications. macOS says it "can't be opened" — click **Done** / cancel.
+> 2. Open **System Settings → Privacy & Security**, scroll down to the Security section.
+> 3. Next to the message about *Stash*, click **Open Anyway**.
+> 4. Confirm with Touch ID or your password, then click **Open**.
+>
+> After this, Stash launches normally every time.
 
 **Launch at login** can be enabled directly in Stash's Settings.
 

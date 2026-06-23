@@ -1,0 +1,24 @@
+<svg width="660" height="420" viewBox="0 0 660 420" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4b3fc4"/>
+      <stop offset="1" stop-color="#2a2270"/>
+    </linearGradient>
+  </defs>
+  <rect width="660" height="420" fill="url(#bg)"/>
+
+  <text x="330" y="62" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="27" font-weight="700" fill="#ffffff">Drag Stash onto Applications</text>
+
+  <!-- arrow between the two icons (Finder draws icons at y ~ 200) -->
+  <g stroke="#ffffff" stroke-width="7" fill="none" opacity="0.9" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="262" y1="200" x2="398" y2="200"/>
+    <polyline points="372,178 400,200 372,222"/>
+  </g>
+
+  <!-- first-launch instructions -->
+  <rect x="36" y="298" width="588" height="98" rx="14" fill="#ffffff" opacity="0.12"/>
+  <rect x="36" y="298" width="588" height="98" rx="14" fill="none" stroke="#ffffff" stroke-opacity="0.32" stroke-width="1.5"/>
+  <text x="330" y="330" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="700" fill="#ffffff">First time you open Stash, macOS may block it — it’s open-source and unsigned.</text>
+  <text x="330" y="357" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="15" fill="#e7e4ff">To allow it: System Settings  ›  Privacy &amp; Security  ›  scroll down  ›  “Open Anyway”.</text>
+  <text x="330" y="380" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" fill="#cfc9ff">(You only need to do this once.)</text>
+</svg>
