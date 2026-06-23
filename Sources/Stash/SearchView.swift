@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct SearchView: View {
     @ObservedObject var controller: SearchController
@@ -6,6 +7,7 @@ struct SearchView: View {
     @ObservedObject var transforms: TransformSettings
     @ObservedObject var ai: AISettings
     @ObservedObject var theme: ThemeSettings
+    var onOpenSettings: () -> Void
     var onHoldChange: (Bool) -> Void
     var onClose: () -> Void
     @State private var showTransforms = false
@@ -91,6 +93,12 @@ struct SearchView: View {
                     AIRegexView(ai: ai, controller: controller, onClose: { showAI = false })
                 }
             }
+
+            Button(action: onOpenSettings) {
+                Image(systemName: "gearshape").foregroundStyle(.secondary)
+            }
+            .buttonStyle(.borderless)
+            .help("Settings")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -231,11 +239,27 @@ private struct ResultRow: View {
     @Environment(\.appTheme) private var theme
     @State private var hovering = false
     @State private var expanded = false
+    @State private var availWidth: CGFloat = 0
 
-    /// Worth a "show more" toggle: multiline or long single-line text (not images).
+    /// True only when the 2-line-limited preview is actually truncated.
     private var isExpandable: Bool {
-        guard !result.isImage else { return false }
-        return preview.contains("\n") || preview.count > 90
+        guard !result.isImage, availWidth > 1 else { return false }
+        return Self.lineCount(of: preview, width: availWidth) > 2
+    }
+
+    /// How many lines `text` occupies at `width` with the row font (counts wraps
+    /// and explicit newlines), so a clip that fits in 2 lines shows no toggle.
+    private static func lineCount(of text: String, width: CGFloat) -> Int {
+        let attrs: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 13)]
+        let opts: NSString.DrawingOptions = [.usesLineFragmentOrigin, .usesFontLeading]
+        let one = ("Ag" as NSString).boundingRect(
+            with: NSSize(width: 100_000, height: CGFloat.greatestFiniteMagnitude),
+            options: opts, attributes: attrs).height
+        guard one > 0 else { return 1 }
+        let full = (text as NSString).boundingRect(
+            with: NSSize(width: width, height: CGFloat.greatestFiniteMagnitude),
+            options: opts, attributes: attrs).height
+        return Int((full / one).rounded())
     }
 
     private static let dateFmt: RelativeDateTimeFormatter = {
@@ -324,6 +348,11 @@ private struct ResultRow: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .background(GeometryReader { g in
+                Color.clear
+                    .onAppear { availWidth = g.size.width }
+                    .onChange(of: g.size.width) { availWidth = $0 }
+            })
 
             VStack(spacing: 8) {
                 if result.favorite {

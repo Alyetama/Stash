@@ -51,6 +51,7 @@ final class PanelController: NSObject, NSWindowDelegate {
     private var panel: FloatingPanel?
     private let controller: SearchController
     private let indexer: Indexer
+    var onOpenSettings: (() -> Void)?
 
     init(controller: SearchController, indexer: Indexer) {
         self.controller = controller
@@ -106,6 +107,7 @@ final class PanelController: NSObject, NSWindowDelegate {
                               transforms: controller.transforms,
                               ai: controller.ai,
                               theme: controller.theme,
+                              onOpenSettings: { [weak self] in self?.onOpenSettings?() },
                               onHoldChange: { [weak self] hold in
                                   guard let self else { return }
                                   if hold {

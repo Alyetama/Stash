@@ -40,6 +40,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
 
+        panelController.onOpenSettings = { [weak self] in self?.settingsWindow.show() }
         hotkeySettings.onChange = { [weak self] in self?.registerHotKey() }
         registerHotKey()
     }
