@@ -174,11 +174,11 @@ struct SearchView: View {
             ProgressView(value: Double(indexer.buildDone),
                          total: Double(max(indexer.buildTotal, 1)))
                 .frame(width: 320)
-            Text("Importing history from Copy 'Em…")
+            Text("Importing clips…")
                 .font(.headline)
             Text("\(indexer.buildDone.formatted()) / \(indexer.buildTotal.formatted()) entries")
                 .font(.callout).foregroundStyle(.secondary)
-            Text("One-time. New clips are captured automatically from here on.")
+            Text("You can keep using Stash while this finishes.")
                 .font(.caption).foregroundStyle(.tertiary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

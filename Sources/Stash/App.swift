@@ -79,17 +79,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         status.isEnabled = false
         menu.addItem(status)
 
-        let sync = NSMenuItem(title: lastSyncText(), action: nil, keyEquivalent: "")
-        sync.isEnabled = false
-        menu.addItem(sync)
-
         let exportItem = NSMenuItem(title: "Export…", action: #selector(exportData), keyEquivalent: "e")
         exportItem.target = self
         menu.addItem(exportItem)
-
-        let importItem = NSMenuItem(title: "Import from Copy 'Em…", action: #selector(importCopyEm), keyEquivalent: "")
-        importItem.target = self
-        menu.addItem(importItem)
 
         menu.addItem(.separator())
 
@@ -111,18 +103,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         switch indexer.phase {
         case .starting:  return "Starting…"
         case .importing: return "Importing \(indexer.buildDone.formatted())/\(indexer.buildTotal.formatted())…"
-        case .ready:     return "\(indexer.indexedCount.formatted()) clips · capturing live"
+        case .ready:     return "\(indexer.indexedCount.formatted()) clips · \(indexer.capturePaused ? "paused" : "capturing")"
         case .error:     return "Error — see logs"
         }
     }
 
-    private func lastSyncText() -> String {
-        guard let d = indexer.lastSync else { return "Live sync: waiting…" }
-        return "Last synced \(d.formatted(date: .omitted, time: .standard))"
-    }
-
     @objc private func openSearch() { panelController.show() }
-    @objc private func importCopyEm() { importFromCEP() }
     @objc private func openSettings() { settingsWindow.show() }
     @objc private func quit() { NSApp.terminate(nil) }
 

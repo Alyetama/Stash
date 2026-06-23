@@ -190,16 +190,8 @@ final class SearchController: ObservableObject {
         }
 
         searchQueue.async { [weak self] in
-            var text = r.text
-            // Copy 'Em imports store only a capped copy — fetch the full text from
-            // Copy 'Em on demand. Self-captured clips already hold their full text.
-            if let self, r.source == "copyem", let sourcePk = r.sourcePk,
-               let src = try? SourceStore(path: self.sourcePath),
-               let full = try? src.fullText(pk: sourcePk) {
-                text = full
-            }
             // Apply the user's copy transformations (upper/lower/trim/prepend…).
-            if let self { text = self.transforms.apply(to: text) }
+            let text = self?.transforms.apply(to: r.text) ?? r.text
             DispatchQueue.main.async {
                 let pb = NSPasteboard.general
                 pb.clearContents()
