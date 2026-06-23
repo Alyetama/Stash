@@ -11,32 +11,29 @@
 <meta property="og:image" content="assets/icon.png">
 <style>
   :root{
-    --indigo:#6a78ff; --violet:#5b38dc; --ink:#0e0f1a; --ink2:#171a2b;
-    --card:#1c2033; --line:#2b3050; --text:#e8eaf6; --muted:#a3a8c8; --white:#fff;
+    --indigo:#6a78ff; --violet:#5b38dc; --ink:#0e0f1a;
+    --card:#1c2033; --line:#2b3050; --text:#e8eaf6; --muted:#a3a8c8;
     --radius:18px;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html{scroll-behavior:smooth}
   body{
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    background:radial-gradient(1200px 700px at 50% -200px,#23264a 0%,var(--ink) 55%) ,var(--ink);
+    background:radial-gradient(1200px 700px at 50% -200px,#23264a 0%,var(--ink) 55%),var(--ink);
     color:var(--text);line-height:1.6;-webkit-font-smoothing:antialiased;
   }
   a{color:var(--indigo);text-decoration:none}
   .wrap{max-width:1040px;margin:0 auto;padding:0 24px}
-  .btn{
-    display:inline-flex;align-items:center;gap:.5em;font-weight:600;font-size:1.02rem;
-    padding:.85em 1.5em;border-radius:12px;border:1px solid transparent;cursor:pointer;transition:.15s;
-  }
+  .btn{display:inline-flex;align-items:center;gap:.5em;font-weight:600;font-size:1.02rem;
+    padding:.85em 1.5em;border-radius:12px;border:1px solid transparent;cursor:pointer;transition:.15s}
   .btn-primary{background:linear-gradient(135deg,var(--indigo),var(--violet));color:#fff;box-shadow:0 8px 30px rgba(91,56,220,.45)}
   .btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 38px rgba(91,56,220,.6)}
   .btn-ghost{background:rgba(255,255,255,.06);border-color:var(--line);color:var(--text)}
   .btn-ghost:hover{background:rgba(255,255,255,.12)}
 
-  /* Hero */
   header{padding:90px 0 40px;text-align:center}
-  .appicon{width:128px;height:128px;border-radius:28px;box-shadow:0 20px 60px rgba(91,56,220,.45);}
-  h1{font-size:clamp(2.6rem,6vw,4.2rem);letter-spacing:-.03em;margin:.35em 0 .15em;
+  .appicon{width:128px;height:128px;filter:drop-shadow(0 20px 50px rgba(91,56,220,.5))}
+  h1{font-size:clamp(2.6rem,6vw,4.2rem);letter-spacing:-.03em;margin:.3em 0 .15em;
      background:linear-gradient(120deg,#fff 30%,#b9c0ff);-webkit-background-clip:text;background-clip:text;color:transparent}
   .tag{font-size:clamp(1.05rem,2.4vw,1.4rem);color:var(--muted);max-width:680px;margin:0 auto 1.6em}
   .tag b{color:var(--text)}
@@ -44,23 +41,27 @@
   .sub{margin-top:14px;font-size:.86rem;color:var(--muted)}
   .kbd{font:inherit;font-size:.82em;background:#252a44;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:.1em .5em}
 
-  /* Mock window */
   .demo{margin:54px auto 0;max-width:680px}
+  .hint{font-size:.8rem;color:var(--muted);margin:0 0 10px;text-align:center}
+  .hint b{color:#b9c0ff}
   .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;
          box-shadow:0 30px 80px rgba(0,0,0,.55);text-align:left}
   .panel .search{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line)}
-  .panel .search svg{flex:0 0 auto}
-  .panel .search input{flex:1;background:none;border:none;outline:none;color:var(--text);font-size:1.15rem}
-  .seg{display:flex;background:#11142480;border:1px solid var(--line);border-radius:8px;font-size:.78rem}
-  .seg span{padding:.3em .7em;color:var(--muted)}
-  .seg span.on{background:linear-gradient(135deg,var(--indigo),var(--violet));color:#fff;border-radius:7px}
-  .row{padding:11px 18px;border-bottom:1px solid #232744;display:flex;flex-direction:column;gap:3px}
+  .panel .search input{flex:1;background:none;border:none;outline:none;color:var(--text);font-size:1.15rem;min-width:0}
+  .panel .search input::placeholder{color:#6b7099}
+  .seg{display:flex;background:#11142480;border:1px solid var(--line);border-radius:9px;font-size:.78rem;flex:0 0 auto}
+  .seg button{font:inherit;background:none;border:none;color:var(--muted);padding:.35em .8em;cursor:pointer;border-radius:7px;transition:.12s}
+  .seg button.on{background:linear-gradient(135deg,var(--indigo),var(--violet));color:#fff}
+  .results{max-height:266px;overflow:auto}
+  .row{padding:11px 18px;border-bottom:1px solid #232744;display:flex;flex-direction:column;gap:3px;cursor:pointer}
+  .row:hover{background:#20253c}
   .row.sel{background:linear-gradient(135deg,rgba(106,120,255,.22),rgba(91,56,220,.22))}
   .row .t{font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row .t mark{background:rgba(106,120,255,.45);color:#fff;border-radius:3px;padding:0 1px}
   .row .m{font-size:.74rem;color:var(--muted)}
-  .foot{padding:9px 18px;font-size:.74rem;color:var(--muted);display:flex;justify-content:space-between}
+  .empty{padding:26px 18px;text-align:center;color:var(--muted);font-size:.92rem}
+  .foot{padding:9px 18px;font-size:.74rem;color:var(--muted);display:flex;justify-content:space-between;gap:10px}
 
-  /* Sections */
   section{padding:64px 0}
   h2{font-size:clamp(1.7rem,3.6vw,2.3rem);letter-spacing:-.02em;text-align:center;margin-bottom:.5em}
   .lead{text-align:center;color:var(--muted);max-width:640px;margin:0 auto 2.4em}
@@ -69,12 +70,10 @@
   .feat .ico{font-size:1.5rem}
   .feat h3{margin:.5em 0 .2em;font-size:1.12rem}
   .feat p{color:var(--muted);font-size:.95rem}
-
   .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:18px;text-align:center}
   .stat{background:linear-gradient(180deg,#1c2033,#171a2b);border:1px solid var(--line);border-radius:var(--radius);padding:26px}
   .stat .n{font-size:2.1rem;font-weight:700;background:linear-gradient(120deg,#fff,#b9c0ff);-webkit-background-clip:text;background-clip:text;color:transparent}
   .stat .l{color:var(--muted);font-size:.9rem;margin-top:.2em}
-
   .steps{counter-reset:s;max-width:720px;margin:0 auto;display:grid;gap:14px}
   .step{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px 18px 64px;position:relative}
   .step::before{counter-increment:s;content:counter(s);position:absolute;left:18px;top:50%;transform:translateY(-50%);
@@ -82,18 +81,40 @@
     display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff}
   .step b{color:var(--text)}
   .note{max-width:720px;margin:24px auto 0;background:#241b2e;border:1px solid #43314f;border-radius:12px;padding:14px 18px;color:#e6d6f0;font-size:.92rem}
-
   pre{background:#0c0e18;border:1px solid var(--line);border-radius:12px;padding:18px;overflow:auto;max-width:720px;margin:0 auto;font-size:.9rem}
   code{font-family:"SF Mono",ui-monospace,Menlo,monospace;color:#cdd3ff}
   footer{padding:48px 0 70px;text-align:center;color:var(--muted);border-top:1px solid var(--line);margin-top:40px}
-  .center{text-align:center}
+  .toast{position:fixed;left:50%;bottom:34px;transform:translateX(-50%) translateY(20px);
+    background:linear-gradient(135deg,var(--indigo),var(--violet));color:#fff;font-weight:600;font-size:.92rem;
+    padding:.7em 1.2em;border-radius:11px;box-shadow:0 12px 40px rgba(91,56,220,.5);opacity:0;pointer-events:none;transition:.22s}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
 </head>
 <body>
 
+<!-- reusable inline icon (renders without external files) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="appicon" viewBox="0 0 1024 1024">
+    <defs>
+      <linearGradient id="stashbg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#6f7dff"/>
+        <stop offset="1" stop-color="#5b38dc"/>
+      </linearGradient>
+    </defs>
+    <rect x="100" y="100" width="824" height="824" rx="186" fill="url(#stashbg)"/>
+    <g fill="none" stroke="#fff" stroke-linecap="round">
+      <circle cx="452" cy="464" r="176" stroke-width="50"/>
+      <path d="M578 592 L726 724" stroke-width="64"/>
+      <path d="M372 396 H560" stroke-width="34"/>
+      <path d="M372 464 H520" stroke-width="34"/>
+      <path d="M372 532 H548" stroke-width="34"/>
+    </g>
+  </symbol>
+</svg>
+
 <header>
   <div class="wrap">
-    <img class="appicon" src="assets/icon.png" alt="Stash icon">
+    <svg class="appicon" aria-label="Stash icon"><use href="#appicon"/></svg>
     <h1>Stash</h1>
     <p class="tag">Find <b>anything you've ever copied</b> in milliseconds. A native macOS menu-bar clipboard manager with instant full-text search that stays fast at a scale of <b>millions</b> of entries.</p>
     <div class="cta">
@@ -103,17 +124,19 @@
     <p class="sub">macOS 13+ · Apple Silicon &amp; Intel · summon anywhere with <span class="kbd">⌃⌥⌘C</span></p>
 
     <div class="demo">
+      <p class="hint">↓ <b>Try it</b> — type to search, switch modes, click a result to copy it.</p>
       <div class="panel">
         <div class="search">
           <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="9.5" cy="9.5" r="6.5" stroke="#a3a8c8" stroke-width="2"/><line x1="14.5" y1="14.5" x2="20" y2="20" stroke="#a3a8c8" stroke-width="2" stroke-linecap="round"/></svg>
-          <input value="invoice 2024" readonly aria-label="search demo">
-          <div class="seg"><span class="on">Substring</span><span>Words</span><span>Regex</span></div>
+          <input id="q" type="text" value="invoice" placeholder="Search your clipboard history…" autocomplete="off" spellcheck="false">
+          <div class="seg" id="modes">
+            <button data-mode="substring" class="on">Substring</button>
+            <button data-mode="words">Words</button>
+            <button data-mode="regex">Regex</button>
+          </div>
         </div>
-        <div class="row sel"><div class="t">Invoice #2024-0417 — Acme Corp — $4,820.00 due Apr 30</div><div class="m">Mail · ⌗ Receipts · 2h ago · 3×</div></div>
-        <div class="row"><div class="t">https://billing.example.com/invoices/2024/q1/summary.pdf</div><div class="m">Safari · yesterday</div></div>
-        <div class="row"><div class="t">INVOICE_2024_FINAL_v3.numbers</div><div class="m">Finder · 3 days ago</div></div>
-        <div class="row"><div class="t">Re: 2024 invoice approvals — please sign by EOD</div><div class="m">Slack · last week</div></div>
-        <div class="foot"><span>200+ results · 4 ms</span><span>click or ↵ copies · esc close</span></div>
+        <div class="results" id="results"></div>
+        <div class="foot"><span id="count"></span><span>click or ↵ copies · ↑↓ navigate</span></div>
       </div>
     </div>
   </div>
@@ -168,10 +191,118 @@
 
 <footer>
   <div class="wrap">
-    <img src="assets/icon.png" width="48" alt="" style="border-radius:11px;opacity:.9">
+    <svg width="48" height="48" style="opacity:.9"><use href="#appicon"/></svg>
     <p style="margin-top:10px">Stash · a fast clipboard manager for macOS · <a href="https://github.com/">source</a> · MIT licensed</p>
   </div>
 </footer>
 
+<div class="toast" id="toast">Copied to clipboard</div>
+
+<script>
+const CLIPS = [
+  {t:"Invoice #2024-0417 — Acme Corp — $4,820.00 due Apr 30", a:"Mail", l:"Receipts", w:"2h ago", u:3},
+  {t:"https://billing.example.com/invoices/2024/q1/summary.pdf", a:"Safari", w:"yesterday"},
+  {t:"INVOICE_2024_FINAL_v3.numbers", a:"Finder", w:"3 days ago"},
+  {t:"Re: 2024 invoice approvals — please sign by EOD", a:"Slack", w:"last week"},
+  {t:"git rebase -i HEAD~4", a:"iTerm", l:"snippets", w:"1h ago", u:11},
+  {t:"ffmpeg -i input.mov -vcodec h264 -crf 20 out.mp4", a:"iTerm", l:"ffmpeg", w:"5h ago", u:7},
+  {t:"sk-proj-9f2a...REDACTED...c41b", a:"VS Code", l:"tokens", w:"2 days ago"},
+  {t:"The quick brown fox jumps over the lazy dog", a:"Notes", w:"4 days ago"},
+  {t:"192.168.1.42:5432  postgres://stash@localhost/db", a:"TablePlus", w:"6h ago"},
+  {t:"meeting notes — ship Stash v1.0, write the README, record demo", a:"Obsidian", l:"todo", w:"30m ago", u:2},
+  {t:"SELECT * FROM entries WHERE text MATCH ? ORDER BY bm25(fts);", a:"DataGrip", l:"snippets", w:"yesterday"},
+  {t:"álbum café naïve résumé — diacritics test", a:"Pages", w:"1 week ago"},
+  {t:"+1 (415) 555-0182", a:"Contacts", w:"3h ago"},
+  {t:"https://github.com/yourname/Stash", a:"Safari", w:"just now", u:1},
+];
+
+const q = document.getElementById('q');
+const modesEl = document.getElementById('modes');
+const resultsEl = document.getElementById('results');
+const countEl = document.getElementById('count');
+const toast = document.getElementById('toast');
+let mode = 'substring';
+let sel = 0;
+let view = [];
+
+const esc = s => s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+function highlight(text, query){
+  if(mode==='regex' || !query.trim()) return esc(text);
+  const terms = query.trim().split(/\s+/).filter(Boolean).map(t=>t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));
+  if(!terms.length) return esc(text);
+  const re = new RegExp('('+terms.join('|')+')','ig');
+  let out='', last=0, m; re.lastIndex=0;
+  while((m=re.exec(text))!==null){
+    out += esc(text.slice(last,m.index)) + '<mark>'+esc(m[0])+'</mark>';
+    last = m.index + m[0].length;
+    if(m.index===re.lastIndex) re.lastIndex++;
+  }
+  return out + esc(text.slice(last));
+}
+
+function matches(text, query){
+  const q = query.trim();
+  if(!q) return true;
+  if(mode==='substring') return text.toLowerCase().includes(q.toLowerCase());
+  if(mode==='words'){
+    const words = text.toLowerCase().split(/[^a-z0-9]+/);
+    return q.toLowerCase().split(/\s+/).filter(Boolean)
+            .every(tok => words.some(w => w.startsWith(tok)));
+  }
+  try { return new RegExp(q,'i').test(text); } catch(e){ return false; }
+}
+
+function render(){
+  const t0 = performance.now();
+  view = CLIPS.filter(c => matches(c.t, q.value));
+  const ms = (performance.now()-t0);
+  if(sel >= view.length) sel = 0;
+
+  if(!view.length){
+    resultsEl.innerHTML = '<div class="empty">No matches'+(mode==='regex'?' — check your pattern':'')+'</div>';
+  } else {
+    resultsEl.innerHTML = view.map((c,i)=>{
+      const meta = [c.a, c.l?('⌗ '+c.l):null, c.w, c.u?(c.u+'×'):null].filter(Boolean).join('  ·  ');
+      return '<div class="row'+(i===sel?' sel':'')+'" data-i="'+i+'"><div class="t">'+highlight(c.t,q.value)+
+             '</div><div class="m">'+esc(meta)+'</div></div>';
+    }).join('');
+  }
+  const n = view.length;
+  countEl.textContent = q.value.trim()
+      ? n+' result'+(n===1?'':'s')+' · '+(ms<0.1?'<0.1':ms.toFixed(1))+' ms'
+      : n+' clips — newest first';
+}
+
+function copy(i){
+  const c = view[i]; if(!c) return;
+  navigator.clipboard && navigator.clipboard.writeText(c.t).catch(()=>{});
+  toast.textContent = 'Copied: '+ (c.t.length>40 ? c.t.slice(0,40)+'…' : c.t);
+  toast.classList.add('show');
+  clearTimeout(copy._t); copy._t = setTimeout(()=>toast.classList.remove('show'), 1400);
+}
+
+q.addEventListener('input', ()=>{ sel=0; render(); });
+q.addEventListener('keydown', e=>{
+  if(e.key==='ArrowDown'){ e.preventDefault(); sel=Math.min(sel+1,view.length-1); render(); scrollSel(); }
+  else if(e.key==='ArrowUp'){ e.preventDefault(); sel=Math.max(sel-1,0); render(); scrollSel(); }
+  else if(e.key==='Enter'){ e.preventDefault(); copy(sel); }
+});
+function scrollSel(){ const r=resultsEl.querySelector('.row.sel'); if(r) r.scrollIntoView({block:'nearest'}); }
+
+resultsEl.addEventListener('click', e=>{
+  const row = e.target.closest('.row'); if(!row) return;
+  sel = +row.dataset.i; render(); copy(sel);
+});
+
+modesEl.addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(!b) return;
+  mode = b.dataset.mode;
+  [...modesEl.children].forEach(x=>x.classList.toggle('on', x===b));
+  sel=0; render();
+});
+
+render();
+</script>
 </body>
 </html>
