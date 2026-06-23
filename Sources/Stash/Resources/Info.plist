@@ -3,13 +3,13 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>CopyEm Search</string>
+    <string>Stash</string>
     <key>CFBundleDisplayName</key>
-    <string>CopyEm Search</string>
+    <string>Stash</string>
     <key>CFBundleIdentifier</key>
-    <string>com.local.copyemsearch</string>
+    <string>com.local.stash</string>
     <key>CFBundleExecutable</key>
-    <string>CopyEmSearch</string>
+    <string>Stash</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleVersion</key>
@@ -23,6 +23,6 @@
     <key>LSUIElement</key>
     <true/>
     <key>NSHumanReadableCopyright</key>
-    <string>Local utility. Reads the Copy 'Em database read-only.</string>
+    <string>Stash — a fast clipboard manager. Imports from Copy 'Em read-only when present.</string>
 </dict>
 </plist>

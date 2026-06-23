@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stash — a blazing-fast clipboard manager for macOS</title>
+<meta name="description" content="Stash records everything you copy and searches your entire clipboard history in milliseconds — even past a million entries. Native macOS menu-bar app.">
+<link rel="icon" href="assets/icon.png">
+<meta property="og:title" content="Stash — fast clipboard search for macOS">
+<meta property="og:description" content="Find any clip you've ever copied in milliseconds. Native menu-bar app, FTS5-powered, scales to millions of entries.">
+<meta property="og:image" content="assets/icon.png">
+<style>
+  :root{
+    --indigo:#6a78ff; --violet:#5b38dc; --ink:#0e0f1a; --ink2:#171a2b;
+    --card:#1c2033; --line:#2b3050; --text:#e8eaf6; --muted:#a3a8c8; --white:#fff;
+    --radius:18px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:radial-gradient(1200px 700px at 50% -200px,#23264a 0%,var(--ink) 55%) ,var(--ink);
+    color:var(--text);line-height:1.6;-webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--indigo);text-decoration:none}
+  .wrap{max-width:1040px;margin:0 auto;padding:0 24px}
+  .btn{
+    display:inline-flex;align-items:center;gap:.5em;font-weight:600;font-size:1.02rem;
+    padding:.85em 1.5em;border-radius:12px;border:1px solid transparent;cursor:pointer;transition:.15s;
+  }
+  .btn-primary{background:linear-gradient(135deg,var(--indigo),var(--violet));color:#fff;box-shadow:0 8px 30px rgba(91,56,220,.45)}
+  .btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 38px rgba(91,56,220,.6)}
+  .btn-ghost{background:rgba(255,255,255,.06);border-color:var(--line);color:var(--text)}
+  .btn-ghost:hover{background:rgba(255,255,255,.12)}
+
+  /* Hero */
+  header{padding:90px 0 40px;text-align:center}
+  .appicon{width:128px;height:128px;border-radius:28px;box-shadow:0 20px 60px rgba(91,56,220,.45);}
+  h1{font-size:clamp(2.6rem,6vw,4.2rem);letter-spacing:-.03em;margin:.35em 0 .15em;
+     background:linear-gradient(120deg,#fff 30%,#b9c0ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .tag{font-size:clamp(1.05rem,2.4vw,1.4rem);color:var(--muted);max-width:680px;margin:0 auto 1.6em}
+  .tag b{color:var(--text)}
+  .cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+  .sub{margin-top:14px;font-size:.86rem;color:var(--muted)}
+  .kbd{font:inherit;font-size:.82em;background:#252a44;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:.1em .5em}
+
+  /* Mock window */
+  .demo{margin:54px auto 0;max-width:680px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;
+         box-shadow:0 30px 80px rgba(0,0,0,.55);text-align:left}
+  .panel .search{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line)}
+  .panel .search svg{flex:0 0 auto}
+  .panel .search input{flex:1;background:none;border:none;outline:none;color:var(--text);font-size:1.15rem}
+  .seg{display:flex;background:#11142480;border:1px solid var(--line);border-radius:8px;font-size:.78rem}
+  .seg span{padding:.3em .7em;color:var(--muted)}
+  .seg span.on{background:linear-gradient(135deg,var(--indigo),var(--violet));color:#fff;border-radius:7px}
+  .row{padding:11px 18px;border-bottom:1px solid #232744;display:flex;flex-direction:column;gap:3px}
+  .row.sel{background:linear-gradient(135deg,rgba(106,120,255,.22),rgba(91,56,220,.22))}
+  .row .t{font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row .m{font-size:.74rem;color:var(--muted)}
+  .foot{padding:9px 18px;font-size:.74rem;color:var(--muted);display:flex;justify-content:space-between}
+
+  /* Sections */
+  section{padding:64px 0}
+  h2{font-size:clamp(1.7rem,3.6vw,2.3rem);letter-spacing:-.02em;text-align:center;margin-bottom:.5em}
+  .lead{text-align:center;color:var(--muted);max-width:640px;margin:0 auto 2.4em}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}
+  .feat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px}
+  .feat .ico{font-size:1.5rem}
+  .feat h3{margin:.5em 0 .2em;font-size:1.12rem}
+  .feat p{color:var(--muted);font-size:.95rem}
+
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:18px;text-align:center}
+  .stat{background:linear-gradient(180deg,#1c2033,#171a2b);border:1px solid var(--line);border-radius:var(--radius);padding:26px}
+  .stat .n{font-size:2.1rem;font-weight:700;background:linear-gradient(120deg,#fff,#b9c0ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .stat .l{color:var(--muted);font-size:.9rem;margin-top:.2em}
+
+  .steps{counter-reset:s;max-width:720px;margin:0 auto;display:grid;gap:14px}
+  .step{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px 18px 64px;position:relative}
+  .step::before{counter-increment:s;content:counter(s);position:absolute;left:18px;top:50%;transform:translateY(-50%);
+    width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--indigo),var(--violet));
+    display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff}
+  .step b{color:var(--text)}
+  .note{max-width:720px;margin:24px auto 0;background:#241b2e;border:1px solid #43314f;border-radius:12px;padding:14px 18px;color:#e6d6f0;font-size:.92rem}
+
+  pre{background:#0c0e18;border:1px solid var(--line);border-radius:12px;padding:18px;overflow:auto;max-width:720px;margin:0 auto;font-size:.9rem}
+  code{font-family:"SF Mono",ui-monospace,Menlo,monospace;color:#cdd3ff}
+  footer{padding:48px 0 70px;text-align:center;color:var(--muted);border-top:1px solid var(--line);margin-top:40px}
+  .center{text-align:center}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <img class="appicon" src="assets/icon.png" alt="Stash icon">
+    <h1>Stash</h1>
+    <p class="tag">Find <b>anything you've ever copied</b> in milliseconds. A native macOS menu-bar clipboard manager with instant full-text search that stays fast at a scale of <b>millions</b> of entries.</p>
+    <div class="cta">
+      <a class="btn btn-primary" href="Stash.dmg" download>⤓ Download for macOS</a>
+      <a class="btn btn-ghost" href="https://github.com/" target="_blank" rel="noopener">View source</a>
+    </div>
+    <p class="sub">macOS 13+ · Apple Silicon &amp; Intel · summon anywhere with <span class="kbd">⌃⌥⌘C</span></p>
+
+    <div class="demo">
+      <div class="panel">
+        <div class="search">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="9.5" cy="9.5" r="6.5" stroke="#a3a8c8" stroke-width="2"/><line x1="14.5" y1="14.5" x2="20" y2="20" stroke="#a3a8c8" stroke-width="2" stroke-linecap="round"/></svg>
+          <input value="invoice 2024" readonly aria-label="search demo">
+          <div class="seg"><span class="on">Substring</span><span>Words</span><span>Regex</span></div>
+        </div>
+        <div class="row sel"><div class="t">Invoice #2024-0417 — Acme Corp — $4,820.00 due Apr 30</div><div class="m">Mail · ⌗ Receipts · 2h ago · 3×</div></div>
+        <div class="row"><div class="t">https://billing.example.com/invoices/2024/q1/summary.pdf</div><div class="m">Safari · yesterday</div></div>
+        <div class="row"><div class="t">INVOICE_2024_FINAL_v3.numbers</div><div class="m">Finder · 3 days ago</div></div>
+        <div class="row"><div class="t">Re: 2024 invoice approvals — please sign by EOD</div><div class="m">Slack · last week</div></div>
+        <div class="foot"><span>200+ results · 4 ms</span><span>click or ↵ copies · esc close</span></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <div class="stats">
+      <div class="stat"><div class="n">&lt; 10 ms</div><div class="l">typical search latency</div></div>
+      <div class="stat"><div class="n">1M+</div><div class="l">entries, still instant</div></div>
+      <div class="stat"><div class="n">100%</div><div class="l">local · no network</div></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Everything you copy, instantly findable</h2>
+    <p class="lead">Stash quietly records your clipboard and indexes it with SQLite FTS5, so search never slows down — no matter how much history you accumulate.</p>
+    <div class="grid">
+      <div class="feat"><div class="ico">📋</div><h3>Live capture</h3><p>Every text clip is saved automatically, tagged with the app it came from and when.</p></div>
+      <div class="feat"><div class="ico">⚡</div><h3>Three search modes</h3><p>Substring "contains", relevance-ranked word search, and full regular expressions.</p></div>
+      <div class="feat"><div class="ico">🕘</div><h3>Recent first</h3><p>Opens to your latest clips. Start typing to search; clear to go back to recent.</p></div>
+      <div class="feat"><div class="ico">🖱️</div><h3>One-click copy</h3><p>Click a result or press Return to copy it and close. Paste with ⌘V anywhere.</p></div>
+      <div class="feat"><div class="ico">⌨️</div><h3>Global hotkey</h3><p>Summon the search bar from any app with ⌃⌥⌘C. No Dock icon, no clutter.</p></div>
+      <div class="feat"><div class="ico">📦</div><h3>Copy 'Em import</h3><p>Already use Copy 'Em? Your history is imported once, strictly read-only.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Get started in seconds</h2>
+    <div class="steps">
+      <div class="step"><b>Download &amp; open</b> the disk image, then drag <b>Stash</b> onto Applications.</div>
+      <div class="step"><b>Launch it</b> from Applications or Spotlight — a magnifier icon appears in your menu bar.</div>
+      <div class="step"><b>Press <span class="kbd">⌃⌥⌘C</span></b> (or left-click the icon) and start searching your clips.</div>
+    </div>
+    <div class="note">⚠️ Stash is a clipboard manager, so it records <b>everything</b> you copy — including passwords and tokens. App-exclusion and a pause toggle are on the roadmap. Everything stays on your Mac; Stash has no network access.</div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Build from source</h2>
+    <p class="lead">Requires the Swift toolchain (ships with Xcode).</p>
+    <pre><code>git clone &lt;your-repo-url&gt; Stash &amp;&amp; cd Stash
+./build.sh        # builds + installs to /Applications
+./make-dmg.sh     # builds + packages dist/Stash.dmg</code></pre>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <img src="assets/icon.png" width="48" alt="" style="border-radius:11px;opacity:.9">
+    <p style="margin-top:10px">Stash · a fast clipboard manager for macOS · <a href="https://github.com/">source</a> · MIT licensed</p>
+  </div>
+</footer>
+
+</body>
+</html>

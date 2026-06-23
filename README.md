@@ -1,92 +1,112 @@
-# CopyEm Search
+<div align="center">
 
-A fast, native macOS **menu-bar clipboard manager** with instant full-text search —
-built to stay snappy even with **millions of entries**.
+<img src="docs/assets/icon.png" width="128" alt="Stash icon">
 
-It records everything you copy and lets you find any past clip in milliseconds via a
-Spotlight-style search panel. Search is powered by SQLite **FTS5** indexes, so it stays
-fast at a scale where most clipboard managers crawl.
+# Stash
 
-> Originally built to search an existing [Copy 'Em](https://apprywhere.com) database.
-> It now works **standalone** — Copy 'Em is optional and only used for a one-time
-> import of your existing history if it's installed.
+**A blazing-fast clipboard manager for macOS with instant full-text search — built to stay snappy at a scale of *millions* of entries.**
+
+Stash records everything you copy and lets you find any past clip in milliseconds from a Spotlight-style search bar in your menu bar.
+
+[Install](#install) · [Features](#features) · [How it works](#how-it-works) · [Build from source](#build-from-source)
+
+![Platform](https://img.shields.io/badge/platform-macOS%2013%2B-blue)
+![Swift](https://img.shields.io/badge/Swift-5.9%2B-orange)
+![License](https://img.shields.io/badge/license-MIT-green)
+
+</div>
+
+---
+
+## Why Stash?
+
+Most clipboard managers grind to a halt once your history grows large — their search does an unindexed scan on every keystroke. Stash keeps the text in **SQLite FTS5** indexes, so search stays **sub-millisecond even past a million entries**. It was originally built to rescue a 560k-entry history whose host app took *seconds* per search; Stash returns the same queries in **single-digit milliseconds**.
 
 ## Features
 
-- **Live clipboard capture** — every text clip you copy is recorded automatically,
-  along with the app it came from and a timestamp.
-- **Instant search**, three modes:
-  - **Substring** — "contains" matching anywhere in an entry (FTS5 trigram, ≥3 chars).
-  - **Words** — whole-word / prefix matching, relevance-ranked (FTS5 + bm25).
-  - **Regex** — full regular-expression scan.
-- **Recent first** — opens to your latest clips; type to search.
-- **Endless scrolling** — results page in 200 at a time; reach every match.
-- **One-click copy** — click a result (or press ↵) to copy it and close.
-- **Menu bar**: left-click opens search, right-click shows the menu.
-- **Global hotkey**: ⌃⌥⌘C from anywhere.
-- **Optional Copy 'Em import** — if Copy 'Em is installed, your existing history is
-  imported once (read-only; Copy 'Em's own data is never modified).
+- 📋 **Live capture** — every text clip you copy is saved automatically, with the source app and timestamp.
+- ⚡ **Instant search**, three modes:
+  - **Substring** — match anywhere inside an entry (FTS5 trigram, ≥3 chars).
+  - **Words** — whole-word & prefix matching, relevance-ranked (FTS5 + bm25).
+  - **Regex** — full regular-expression search.
+- 🕘 **Recent first** — opens to your latest clips; just start typing to search.
+- ♾️ **Endless results** — pages in 200 at a time, so you can scroll through every match.
+- 🖱️ **One-click copy** — click a result (or press <kbd>↵</kbd>) to copy it and close.
+- ⌨️ **Global hotkey** — <kbd>⌃</kbd><kbd>⌥</kbd><kbd>⌘</kbd><kbd>C</kbd> from anywhere.
+- 🧭 **Menu bar native** — left-click opens search, right-click for the menu. No Dock clutter.
+- 📦 **Optional Copy 'Em import** — already use [Copy 'Em](https://apprywhere.com)? Stash imports your existing history once, **read-only** (it never modifies Copy 'Em's data). On machines without it, this step is simply skipped.
 
-## Install (prebuilt)
+## Install
 
-1. Open `dist/CopyEm Search.dmg`.
-2. Drag **CopyEm Search** onto **Applications**.
-3. Launch it from Applications (or Spotlight). A magnifying-glass icon appears in the
-   menu bar. Press **⌃⌥⌘C** to search.
+1. Download and open **`dist/Stash.dmg`** (or grab it from Releases).
+2. Drag **Stash** onto **Applications**.
+3. Launch it from Applications or Spotlight. A magnifier icon appears in the menu bar.
+4. Press <kbd>⌃</kbd><kbd>⌥</kbd><kbd>⌘</kbd><kbd>C</kbd> and start searching.
 
-The app is unsigned (ad-hoc). On first launch macOS may warn — right-click the app →
-**Open**, or allow it under System Settings → Privacy & Security.
+> The app is ad-hoc signed (no paid Developer ID). On first launch, macOS Gatekeeper may warn — right-click the app → **Open**, or allow it under **System Settings → Privacy & Security**.
 
-To launch at login: System Settings → General → Login Items → ＋ → select the app.
+**Launch at login:** System Settings → General → Login Items → ＋ → select Stash.
 
-## Build from source
+## Usage
 
-Requires Xcode / Swift toolchain (Swift 5.9+).
-
-```bash
-./build.sh           # builds and installs to /Applications
-./make-dmg.sh        # builds and packages dist/CopyEm Search.dmg
-```
-
-`INSTALL_DIR=~/Applications ./build.sh` installs to a custom location.
+| Action | How |
+| --- | --- |
+| Open search | Left-click the menu-bar icon, or <kbd>⌃⌥⌘C</kbd> |
+| Search modes | Toggle **Substring / Words / Regex** in the bar |
+| Move selection | <kbd>↑</kbd> / <kbd>↓</kbd> |
+| Copy a clip | Click it, or press <kbd>↵</kbd> (copies and closes) |
+| Dismiss | <kbd>Esc</kbd>, or click away |
+| Menu (count, import, quit) | Right-click the menu-bar icon |
 
 ## How it works
 
-- A small SQLite database lives at
-  `~/Library/Application Support/CopyEmSearch/index.db`.
-- A pasteboard monitor polls the system clipboard and inserts new text clips.
-- Two FTS5 virtual tables (trigram + word) index the text for instant search; regex
-  scans the compact text column directly.
-- If Copy 'Em is present, historical entries are imported once from its store
-  (`~/Library/Containers/Copy-em-Paste/…/Copy-em-Paste.storedata`), opened strictly
-  **read-only**.
+- A SQLite database lives at `~/Library/Application Support/Stash/index.db`.
+- A lightweight pasteboard watcher polls the system clipboard and records new text clips (de-duplicating repeats).
+- Two FTS5 virtual tables (trigram + word) index the text for instant search; regex scans the compact text column directly.
+- When [Copy 'Em](https://apprywhere.com) is installed, history is imported **once** from its Core Data store, opened strictly **read-only** — your existing data is never touched.
 
-### Uninstall
+Everything is local. Stash has no network access and stores nothing outside that one folder.
 
-Quit the app, delete it from Applications, and remove
-`~/Library/Application Support/CopyEmSearch/`.
+> ⚠️ **Note:** As a clipboard manager, Stash records *everything* you copy — including passwords and tokens. An app-exclusion list and a pause toggle are on the roadmap.
+
+## Build from source
+
+Requires the Swift toolchain (Swift 5.9+, ships with Xcode).
+
+```bash
+git clone <your-repo-url> Stash && cd Stash
+./build.sh        # builds + installs to /Applications
+./make-dmg.sh     # builds + packages dist/Stash.dmg
+```
+
+Install elsewhere with `INSTALL_DIR=~/Applications ./build.sh`.
 
 ## Project layout
 
 ```
-Package.swift                  Swift package manifest
-build.sh                       Build + bundle + ad-hoc sign → .app
-make-dmg.sh                    Build + package → dist/*.dmg
-Sources/CopyEmSearch/
-  App.swift                    Menu-bar status item, hotkey, app lifecycle
-  ClipboardMonitor.swift       System clipboard watcher
-  Indexer.swift                History manager: capture + optional import
-  SidecarDB.swift              SQLite schema, FTS5, search engine
-  SourceStore.swift            Read-only Copy 'Em reader (optional import)
-  SearchController.swift        Query/paging/selection/copy logic
-  SearchPanel.swift            Floating panel + focus-stealing search field
-  SearchView.swift             SwiftUI search UI
-  Hotkey.swift                 Carbon global hotkey
-  Icon.swift                   Custom menu-bar icon
-  SQLite.swift                 Thin sqlite3 wrapper
-  Resources/Info.plist         Bundle metadata (LSUIElement agent app)
+Package.swift            Swift package manifest
+build.sh                 Build + bundle + ad-hoc sign → Stash.app
+make-dmg.sh              Build + package → dist/Stash.dmg
+docs/                    GitHub Pages website
+Sources/Stash/
+  App.swift              Menu-bar status item, hotkey, app lifecycle
+  ClipboardMonitor.swift System clipboard watcher
+  Indexer.swift          History manager: live capture + optional import
+  SidecarDB.swift        SQLite schema, FTS5, search engine
+  SourceStore.swift      Read-only Copy 'Em reader (optional import)
+  SearchController.swift  Query / paging / selection / copy logic
+  SearchPanel.swift      Floating panel + focus-stealing search field
+  SearchView.swift       SwiftUI search UI
+  Hotkey.swift           Carbon global hotkey
+  Icon.swift             Custom menu-bar icon
+  SQLite.swift           Thin sqlite3 wrapper
+  Resources/             Info.plist + AppIcon.icns
 ```
+
+## Uninstall
+
+Quit Stash, delete it from Applications, and remove `~/Library/Application Support/Stash/`.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+[MIT](LICENSE)

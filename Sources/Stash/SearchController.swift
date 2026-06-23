@@ -14,7 +14,7 @@ final class SearchController: ObservableObject {
 
     let sourcePath: String
 
-    private let searchQueue = DispatchQueue(label: "com.local.copyemsearch.search")
+    private let searchQueue = DispatchQueue(label: "com.local.stash.search")
     private var engine: SearchEngine?
     private var generation = 0
     private var loadingMore = false

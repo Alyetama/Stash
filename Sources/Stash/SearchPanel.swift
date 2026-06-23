@@ -93,7 +93,7 @@ final class PanelController: NSObject, NSWindowDelegate {
 }
 
 extension Notification.Name {
-    static let focusSearchField = Notification.Name("CopyEmSearch.focusSearchField")
+    static let focusSearchField = Notification.Name("Stash.focusSearchField")
 }
 
 /// An NSTextField bridged into SwiftUI that reports arrow/return/escape so the

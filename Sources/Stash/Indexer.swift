@@ -17,7 +17,7 @@ final class Indexer: ObservableObject {
 
     let sourcePath: String
 
-    private let queue = DispatchQueue(label: "com.local.copyemsearch.store")
+    private let queue = DispatchQueue(label: "com.local.stash.store")
     private var sidecar: SidecarDB?
     private var monitor: ClipboardMonitor?
     private let commitBatch = 5000

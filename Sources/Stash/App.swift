@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 
 @main
-struct CopyEmSearchApp: App {
+struct StashApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 
     var body: some Scene {
@@ -77,7 +77,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(.separator())
 
-        let quit = NSMenuItem(title: "Quit CopyEm Search", action: #selector(quit), keyEquivalent: "q")
+        let quit = NSMenuItem(title: "Quit Stash", action: #selector(quit), keyEquivalent: "q")
         quit.target = self
         menu.addItem(quit)
 

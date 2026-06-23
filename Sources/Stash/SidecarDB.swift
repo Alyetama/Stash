@@ -24,7 +24,7 @@ struct SearchResult: Identifiable {
 enum Sidecar {
     static var directory: String {
         FileManager.default.homeDirectoryForCurrentUser.path
-            + "/Library/Application Support/CopyEmSearch"
+            + "/Library/Application Support/Stash"
     }
     static var dbPath: String { directory + "/index.db" }
 }

@@ -2,12 +2,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "CopyEmSearch",
+    name: "Stash",
     platforms: [.macOS(.v13)],
     targets: [
         .executableTarget(
-            name: "CopyEmSearch",
-            path: "Sources/CopyEmSearch",
+            name: "Stash",
+            path: "Sources/Stash",
             exclude: ["Resources/Info.plist", "Resources/AppIcon.icns"],
             linkerSettings: [
                 .linkedLibrary("sqlite3")

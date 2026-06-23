@@ -1,9 +1,9 @@
 #!/bin/bash
-# Build CopyEm Search.app and package it into a drag-to-install .dmg under dist/.
+# Build Stash.app and package it into a drag-to-install .dmg under dist/.
 set -euo pipefail
 cd "$(dirname "$0")"
 
-APP_NAME="CopyEm Search"
+APP_NAME="Stash"
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 
