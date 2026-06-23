@@ -223,6 +223,13 @@ private struct ResultRow: View {
     let result: SearchResult
     let selected: Bool
     @State private var hovering = false
+    @State private var expanded = false
+
+    /// Worth a "show more" toggle: multiline or long single-line text (not images).
+    private var isExpandable: Bool {
+        guard !result.isImage else { return false }
+        return preview.contains("\n") || preview.count > 90
+    }
 
     private static let dateFmt: RelativeDateTimeFormatter = {
         let f = RelativeDateTimeFormatter(); f.unitsStyle = .abbreviated; return f
@@ -299,7 +306,7 @@ private struct ResultRow: View {
             leading
             VStack(alignment: .leading, spacing: 3) {
                 Text(styledPreview)
-                    .lineLimit(2)
+                    .lineLimit(expanded ? nil : 2)
                     .font(.system(size: 13))
                     .foregroundStyle(selected ? Color.white : Color.primary)
                     .tint(selected ? Color.white : Color(red: 0.30, green: 0.55, blue: 1.0))
@@ -311,12 +318,26 @@ private struct ResultRow: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            if result.favorite {
-                Image(systemName: "star.fill")
-                    .font(.system(size: 11))
-                    .foregroundStyle(selected ? AnyShapeStyle(.white) : AnyShapeStyle(.yellow))
-                    .padding(.top, 2)
+            VStack(spacing: 8) {
+                if result.favorite {
+                    Image(systemName: "star.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(selected ? AnyShapeStyle(.white) : AnyShapeStyle(.yellow))
+                }
+                if isExpandable {
+                    Button { withAnimation(.easeInOut(duration: 0.15)) { expanded.toggle() } } label: {
+                        Image(systemName: expanded ? "chevron.up" : "chevron.down")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(selected ? Color.white : Color.secondary)
+                            .frame(width: 22, height: 22)
+                            .background(
+                                Circle().fill(selected ? Color.white.opacity(0.18) : Color.primary.opacity(0.08)))
+                    }
+                    .buttonStyle(.plain)
+                    .help(expanded ? "Show less" : "Show more")
+                }
             }
+            .padding(.top, 1)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
