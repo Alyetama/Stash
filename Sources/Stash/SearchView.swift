@@ -233,6 +233,19 @@ struct SearchView: View {
     }
 }
 
+/// Resolves a source-app name (as stored on a clip) to its icon, cached so the
+/// lookup happens once per app rather than per row.
+enum AppIconResolver {
+    private static var cache: [String: NSImage?] = [:]
+    static func icon(for name: String) -> NSImage? {
+        if let cached = cache[name] { return cached }
+        let ws = NSWorkspace.shared
+        let img = ws.fullPath(forApplication: name).map { ws.icon(forFile: $0) }
+        cache[name] = img
+        return img
+    }
+}
+
 private struct ResultRow: View {
     let result: SearchResult
     let selected: Bool
@@ -304,13 +317,20 @@ private struct ResultRow: View {
 
     private var appName: String { (result.app?.isEmpty == false ? result.app! : "•") }
 
-    private var badge: some View {
-        let initial = String(appName.first.map(String.init) ?? "•").uppercased()
-        return RoundedRectangle(cornerRadius: 7, style: .continuous)
-            .fill(Self.color(for: appName).gradient)
-            .frame(width: 28, height: 28)
-            .overlay(Text(initial).font(.system(size: 13, weight: .semibold)).foregroundStyle(.white))
-            .overlay(RoundedRectangle(cornerRadius: 7, style: .continuous).strokeBorder(.white.opacity(0.15), lineWidth: 0.5))
+    @ViewBuilder private var badge: some View {
+        if let icon = AppIconResolver.icon(for: appName) {
+            Image(nsImage: icon)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 28, height: 28)
+        } else {
+            let initial = String(appName.first.map(String.init) ?? "•").uppercased()
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .fill(Self.color(for: appName).gradient)
+                .frame(width: 28, height: 28)
+                .overlay(Text(initial).font(.system(size: 13, weight: .semibold)).foregroundStyle(.white))
+                .overlay(RoundedRectangle(cornerRadius: 7, style: .continuous).strokeBorder(.white.opacity(0.15), lineWidth: 0.5))
+        }
     }
 
     @ViewBuilder private var leading: some View {
