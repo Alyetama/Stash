@@ -86,22 +86,6 @@ Everything is **local-first** — no telemetry, and your clips never leave your 
 
 **Launch at login** can be enabled directly in Stash's Settings.
 
-## Usage
-
-| Action | How |
-| --- | --- |
-| Open search | Left-click the menu-bar icon, or <kbd>⌃⌥C</kbd> |
-| Switch match mode | Toggle **Substring / Words / Regex** in the bar |
-| Move selection | <kbd>↑</kbd> / <kbd>↓</kbd> |
-| Copy a clip | Click it, or press <kbd>↵</kbd> (copies and closes) |
-| Favorite / delete a clip | **Right-click** the result → Add to Favorites / Delete |
-| View favorites / a group | Open the dropdown in the search bar → **Favorites** or a group name |
-| Add a clip to a group | **Right-click** the result → **Add to Group** → pick one or **New group…** |
-| Transform on copy | Click the **Aa** button → toggle Upper / Lower / Trim / Prepend… |
-| Open Settings | The gear in the search bar, or right-click the menu-bar icon → **Settings** |
-| Export history | Right-click the menu-bar icon → **Export…** → choose a `.sqlite` file |
-| Dismiss | <kbd>Esc</kbd>, or click away |
-
 ## Settings
 
 Open Settings from the gear in the search bar, or the menu-bar menu.
