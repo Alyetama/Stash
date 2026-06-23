@@ -20,9 +20,11 @@ enum AppTheme: String, CaseIterable, Identifiable {
 
     // Atom One Dark palette.
     private static let odBlue   = Color(red: 0.38, green: 0.69, blue: 0.94)  // #61afef
-    private static let odPurple = Color(red: 0.78, green: 0.47, blue: 0.87)  // #c678dd
     private static let odBg1    = Color(red: 0.157, green: 0.173, blue: 0.204) // #282c34
     private static let odBg2    = Color(red: 0.125, green: 0.137, blue: 0.165) // #20232a
+    // Muted slate selection (One Dark's signature highlight), not the bright accent.
+    private static let odSel1   = Color(red: 0.239, green: 0.290, blue: 0.388) // #3d4a63
+    private static let odSel2   = Color(red: 0.192, green: 0.227, blue: 0.302) // #313a4d
 
     /// Accent used for controls (segmented picker, AI button…).
     var accent: Color {
@@ -38,7 +40,7 @@ enum AppTheme: String, CaseIterable, Identifiable {
         switch self {
         case .system:   return [Color.accentColor.opacity(0.95), Color.accentColor.opacity(0.78)]
         case .midnight: return [Color(red: 0.45, green: 0.50, blue: 1.0), Self.violet]
-        case .oneDark:  return [Self.odBlue, Self.odPurple]
+        case .oneDark:  return [Self.odSel1, Self.odSel2]
         }
     }
 
@@ -46,7 +48,7 @@ enum AppTheme: String, CaseIterable, Identifiable {
         switch self {
         case .system:   return Color.accentColor.opacity(0.35)
         case .midnight: return Self.indigo.opacity(0.35)
-        case .oneDark:  return Self.odBlue.opacity(0.35)
+        case .oneDark:  return Color.black.opacity(0.35)   // soft dark shadow, no bright halo
         }
     }
 
