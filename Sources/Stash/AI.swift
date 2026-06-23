@@ -90,7 +90,9 @@ struct AIService {
         let body: [String: Any] = [
             "model": settings.model,
             "temperature": 0,
-            "max_tokens": 200,
+            // Generous budget: several of OpenCode's free models are reasoning
+            // models that spend tokens "thinking" before emitting the answer.
+            "max_tokens": 2000,
             "messages": [
                 ["role": "system", "content": Self.system],
                 ["role": "user", "content": prompt],
@@ -126,9 +128,12 @@ struct AIService {
                 if content == nil { content = first["text"] as? String }
                 if let c = content {
                     let cleaned = Self.clean(c)
-                    return cleaned.isEmpty
-                        ? completion(.failure(AIError.api("The model returned an empty result.")))
-                        : completion(.success(cleaned))
+                    if !cleaned.isEmpty { return completion(.success(cleaned)) }
+                    let reason = first["finish_reason"] as? String
+                    let msg = reason == "length"
+                        ? "The model ran out of room while reasoning. Try again, or pick a different model."
+                        : "The model returned an empty result. Try again or pick a different model."
+                    return completion(.failure(AIError.api(msg)))
                 }
             }
             completion(.failure(AIError.api("Unexpected response (HTTP \(status)): \(raw.prefix(180))")))
