@@ -112,21 +112,36 @@ struct AIRegexView: View {
     @State private var generating = false
     @State private var error = ""
     @State private var showKey = false
+    @State private var editingKey = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Generate regex with AI").font(.headline)
 
-            HStack(spacing: 6) {
-                Group {
-                    if showKey { TextField("OpenCode API key", text: $ai.apiKey) }
-                    else { SecureField("OpenCode API key", text: $ai.apiKey) }
+            if ai.enabled && !editingKey {
+                // Key already saved — show a compact status with Edit / Remove.
+                HStack(spacing: 8) {
+                    Image(systemName: "key.fill").foregroundStyle(.green)
+                    Text("API key set").font(.callout)
+                    Spacer()
+                    Button("Edit") { showKey = false; editingKey = true }.buttonStyle(.link)
+                    Button("Remove", role: .destructive) { ai.apiKey = ""; editingKey = false }.buttonStyle(.link)
                 }
-                .textFieldStyle(.roundedBorder)
-                Button { showKey.toggle() } label: { Image(systemName: showKey ? "eye.slash" : "eye") }
-                    .buttonStyle(.borderless)
+            } else {
+                HStack(spacing: 6) {
+                    Group {
+                        if showKey { TextField("OpenCode API key", text: $ai.apiKey) }
+                        else { SecureField("OpenCode API key", text: $ai.apiKey) }
+                    }
+                    .textFieldStyle(.roundedBorder)
+                    Button { showKey.toggle() } label: { Image(systemName: showKey ? "eye.slash" : "eye") }
+                        .buttonStyle(.borderless)
+                    if ai.enabled {
+                        Button("Done") { editingKey = false }.buttonStyle(.link)
+                    }
+                }
+                TextField("Model", text: $ai.model).textFieldStyle(.roundedBorder)
             }
-            TextField("Model", text: $ai.model).textFieldStyle(.roundedBorder)
 
             Divider().padding(.vertical, 1)
 
