@@ -45,8 +45,22 @@
   .demo{margin:54px auto 0;max-width:680px}
   .hint{font-size:.8rem;color:var(--muted);margin:0 0 10px;text-align:center}
   .hint b{color:#b9c0ff}
-  .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;
-         box-shadow:0 30px 80px rgba(0,0,0,.55);text-align:left}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;
+         box-shadow:0 30px 80px rgba(0,0,0,.55);text-align:left;position:relative}
+  .aibtn{font:inherit;font-size:1.05rem;line-height:1;background:rgba(106,120,255,.16);
+    border:1px solid var(--line);color:#cdd3ff;border-radius:8px;padding:.34em .5em;cursor:pointer;flex:0 0 auto;transition:.12s}
+  .aibtn:hover{background:rgba(106,120,255,.3)}
+  .aipop{position:absolute;right:14px;top:62px;z-index:6;width:300px;background:#181b2b;
+    border:1px solid var(--line);border-radius:12px;padding:14px;box-shadow:0 22px 55px rgba(0,0,0,.6)}
+  .aipop .ttl{font-size:.92rem;font-weight:600;color:#cdd3ff;margin-bottom:9px}
+  .aipop input{width:100%;background:#0f1120;border:1px solid var(--line);border-radius:8px;
+    color:var(--text);padding:.55em .7em;font:inherit;font-size:.9rem;outline:none}
+  .aipop input:focus{border-color:var(--indigo)}
+  .aipop .gen{margin-top:10px;width:100%;background:linear-gradient(135deg,var(--indigo),var(--violet));
+    color:#fff;border:none;border-radius:8px;padding:.6em;font:inherit;font-weight:600;cursor:pointer}
+  .aipop .gen:hover{filter:brightness(1.08)}
+  .aipop .gen:disabled{opacity:.75;cursor:default}
+  .aipop .note{margin-top:9px;font-size:.72rem;color:var(--muted)}
   .panel .search{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line)}
   .panel .search input{flex:1;background:none;border:none;outline:none;color:var(--text);font-size:1.15rem;min-width:0}
   .panel .search input::placeholder{color:#6b7099}
@@ -127,7 +141,7 @@
     <p class="sub">macOS 13+ · Apple Silicon &amp; Intel · 100% local · summon anywhere with <span class="kbd">⌃⌥⌘C</span></p>
 
     <div class="demo">
-      <p class="hint">↓ <b>Try it</b> — type a query, then switch <b>Substring / Words / Regex</b> to see how each matches differently. Click a result to copy it.</p>
+      <p class="hint">↓ <b>Try it</b> — switch <b>Substring / Words / Regex</b> to see how each matches. In <b>Regex</b>, tap <b>✨</b> to generate a pattern from plain English. Click a result to copy it.</p>
       <div class="panel">
         <div class="search">
           <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="9.5" cy="9.5" r="6.5" stroke="#a3a8c8" stroke-width="2"/><line x1="14.5" y1="14.5" x2="20" y2="20" stroke="#a3a8c8" stroke-width="2" stroke-linecap="round"/></svg>
@@ -137,6 +151,13 @@
             <button data-mode="words">Words</button>
             <button data-mode="regex">Regex</button>
           </div>
+          <button class="aibtn" id="aiBtn" title="Generate a regex with AI" hidden>✨</button>
+        </div>
+        <div class="aipop" id="aiPop" hidden>
+          <div class="ttl">✨ Describe the pattern</div>
+          <input id="aiPrompt" type="text" value="dates like 2024-04-30" autocomplete="off" spellcheck="false">
+          <button class="gen" id="aiGen">Generate regex</button>
+          <div class="note">Showcase only — in the app a free model writes the regex from your description and runs the search.</div>
         </div>
         <div class="results" id="results"></div>
         <div class="foot"><span id="count"></span><span>click or ↵ copies · ↑↓ navigate</span></div>
@@ -316,14 +337,57 @@ resultsEl.addEventListener('click', function(e){
   sel = +row.dataset.i; render(); copy(sel);
 });
 
+const aiBtn = document.getElementById('aiBtn');
+const aiPop = document.getElementById('aiPop');
+const aiPrompt = document.getElementById('aiPrompt');
+const aiGen = document.getElementById('aiGen');
+
+function syncAI(){
+  aiBtn.hidden = mode !== 'regex';
+  if(mode !== 'regex') aiPop.hidden = true;
+}
+
+// Canned "AI" — maps a plain-English description to a regex, no network call.
+function fakeRegex(prompt){
+  const p = (prompt||'').toLowerCase();
+  if(/mail/.test(p))                 return '[\\w.+-]+@[\\w-]+\\.[\\w.]+';
+  if(/url|link|http/.test(p))        return 'https?://\\S+';
+  if(/phone|tel|mobile/.test(p))     return '\\+?\\d[\\d ()-]{7,}\\d';
+  if(/ip(v4)?\b|address\b/.test(p))  return '\\d{1,3}(?:\\.\\d{1,3}){3}';
+  if(/order|invoice|po\b|sku/.test(p)) return '[A-Z]{2}-\\d{4}-\\d{4}';
+  return '\\d{4}-\\d{2}-\\d{2}';     // dates, the default
+}
+
+aiBtn.addEventListener('click', function(){
+  aiPop.hidden = !aiPop.hidden;
+  if(!aiPop.hidden) aiPrompt.focus();
+});
+
+aiGen.addEventListener('click', function(){
+  aiGen.disabled = true; aiGen.textContent = '✨ Generating…';
+  setTimeout(function(){
+    q.value = fakeRegex(aiPrompt.value);
+    aiPop.hidden = true;
+    aiGen.disabled = false; aiGen.textContent = 'Generate regex';
+    sel=0; render();
+  }, 800);
+});
+aiPrompt.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); aiGen.click(); } });
+
+document.addEventListener('click', function(e){
+  if(!aiPop.hidden && !aiPop.contains(e.target) && e.target !== aiBtn) aiPop.hidden = true;
+});
+
 modesEl.addEventListener('click', function(e){
   const b = e.target.closest('button'); if(!b) return;
   mode = b.dataset.mode;
   Array.prototype.forEach.call(modesEl.children, function(x){ x.classList.toggle('on', x===b); });
   q.value = EXAMPLES[mode];
+  syncAI();
   sel=0; render();
 });
 
+syncAI();
 render();
 </script>
 </body>
