@@ -5,6 +5,7 @@ struct SearchView: View {
     @ObservedObject var indexer: Indexer
     @ObservedObject var transforms: TransformSettings
     @ObservedObject var ai: AISettings
+    var onHoldChange: (Bool) -> Void
     var onClose: () -> Void
     @State private var showTransforms = false
     @State private var showAI = false
@@ -22,6 +23,8 @@ struct SearchView: View {
         .onChange(of: controller.query) { _ in controller.runSearch() }
         .onChange(of: controller.mode) { _ in controller.runSearch() }
         .onChange(of: controller.favoritesOnly) { _ in controller.runSearch() }
+        // Keep the panel open while the AI popover (and its Keychain prompt) is up.
+        .onChange(of: showAI) { onHoldChange($0) }
     }
 
     // MARK: header (search field + mode selector)

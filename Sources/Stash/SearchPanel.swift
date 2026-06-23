@@ -61,6 +61,10 @@ final class PanelController: NSObject, NSWindowDelegate {
     /// dropdown closing transiently steals key focus).
     private var suppressResignUntil = Date.distantPast
 
+    /// While true, don't dismiss on focus loss — set when a modal sub-flow (e.g.
+    /// the AI popover, whose Keychain prompt steals focus) is active.
+    var holdOpen = false
+
     func toggle() {
         if let panel, panel.isVisible { hide() } else { show() }
     }
@@ -101,6 +105,15 @@ final class PanelController: NSObject, NSWindowDelegate {
         let root = SearchView(controller: controller, indexer: indexer,
                               transforms: controller.transforms,
                               ai: controller.ai,
+                              onHoldChange: { [weak self] hold in
+                                  guard let self else { return }
+                                  if hold {
+                                      self.holdOpen = true
+                                  } else {
+                                      // Brief grace so the panel survives the prompt/popover dismissal transition.
+                                      DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { self.holdOpen = false }
+                                  }
+                              },
                               onClose: { [weak self] in self?.hide() })
         panel.contentView = NSHostingView(rootView: root)
         return panel
@@ -108,8 +121,8 @@ final class PanelController: NSObject, NSWindowDelegate {
 
     func windowDidResignKey(_ notification: Notification) {
         // Clicking elsewhere dismisses the overlay — but ignore the transient
-        // resign that happens while the menu-bar dropdown is closing.
-        if Date() < suppressResignUntil { return }
+        // resign during menu-close, and keep open while a modal sub-flow is active.
+        if holdOpen || Date() < suppressResignUntil { return }
         hide()
     }
 }
