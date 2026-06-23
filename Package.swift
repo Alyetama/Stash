@@ -8,7 +8,7 @@ let package = Package(
         .executableTarget(
             name: "CopyEmSearch",
             path: "Sources/CopyEmSearch",
-            exclude: ["Resources/Info.plist"],
+            exclude: ["Resources/Info.plist", "Resources/AppIcon.icns"],
             linkerSettings: [
                 .linkedLibrary("sqlite3")
             ]

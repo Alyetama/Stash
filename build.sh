@@ -19,6 +19,7 @@ rm -rf "$APP_DIR"
 mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
 cp "$BIN" "$APP_DIR/Contents/MacOS/CopyEmSearch"
 cp "Sources/CopyEmSearch/Resources/Info.plist" "$APP_DIR/Contents/Info.plist"
+cp "Sources/CopyEmSearch/Resources/AppIcon.icns" "$APP_DIR/Contents/Resources/AppIcon.icns"
 
 echo "==> Ad-hoc code signing…"
 codesign --force --deep --sign - "$APP_DIR"
