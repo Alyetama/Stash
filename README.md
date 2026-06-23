@@ -92,7 +92,7 @@ Everything is **100% local** — no network access, no telemetry. Your clips nev
 
 The landing page in [`docs/`](docs/) is deployed to **GitHub Pages automatically** by
 [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml) on every push
-to `main`. After your first push it goes live at `https://<user>.github.io/<repo>/`.
+to `main`. After your first push it goes live at <https://alyetama.github.io/Stash/>.
 
 > If Actions can't enable Pages automatically (some org settings), set it once under
 > **Settings → Pages → Source → GitHub Actions**, then re-run the workflow.
@@ -102,7 +102,7 @@ to `main`. After your first push it goes live at `https://<user>.github.io/<repo
 Requires the Swift toolchain (Swift 5.9+, ships with Xcode).
 
 ```bash
-git clone <your-repo-url> Stash && cd Stash
+git clone https://github.com/Alyetama/Stash.git Stash && cd Stash
 ./build.sh        # builds + installs to /Applications
 ./make-dmg.sh     # builds + packages dist/Stash.dmg
 ```
