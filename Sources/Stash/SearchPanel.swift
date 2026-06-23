@@ -20,10 +20,30 @@ final class FloatingPanel: NSPanel {
         hidesOnDeactivate = false
         isReleasedWhenClosed = false
         animationBehavior = .utilityWindow
-        backgroundColor = .windowBackgroundColor
+        // Transparent so the SwiftUI frosted material shows through; dark, sleek look.
+        isOpaque = false
+        backgroundColor = .clear
+        appearance = NSAppearance(named: .darkAqua)
+        hasShadow = true
     }
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
+}
+
+/// A frosted translucent backdrop (used behind the search UI).
+struct VisualEffectView: NSViewRepresentable {
+    var material: NSVisualEffectView.Material = .hudWindow
+    var blending: NSVisualEffectView.BlendingMode = .behindWindow
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let v = NSVisualEffectView()
+        v.material = material
+        v.blendingMode = blending
+        v.state = .active
+        return v
+    }
+    func updateNSView(_ v: NSVisualEffectView, context: Context) {
+        v.material = material; v.blendingMode = blending
+    }
 }
 
 /// Shows/hides the search panel and wires up dismiss-on-blur.

@@ -10,11 +10,12 @@ struct SearchView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider()
+            Divider().opacity(0.4)
             content
-            Divider()
+            Divider().opacity(0.4)
             footer
         }
+        .background(VisualEffectView().ignoresSafeArea())
         .frame(minWidth: 560, minHeight: 360)
         .onChange(of: controller.query) { _ in controller.runSearch() }
         .onChange(of: controller.mode) { _ in controller.runSearch() }
@@ -95,7 +96,7 @@ struct SearchView: View {
     private var resultsList: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 0) {
+                LazyVStack(spacing: 1) {
                     ForEach(Array(controller.results.enumerated()), id: \.element.pk) { idx, r in
                         ResultRow(result: r, selected: idx == controller.selected)
                             .id(r.pk)
@@ -136,6 +137,7 @@ struct SearchView: View {
                             .padding(.vertical, 10)
                     }
                 }
+                .padding(.vertical, 5)
             }
             .onChange(of: controller.selected) { sel in
                 guard controller.results.indices.contains(sel) else { return }
@@ -205,6 +207,7 @@ struct SearchView: View {
 private struct ResultRow: View {
     let result: SearchResult
     let selected: Bool
+    @State private var hovering = false
 
     private static let dateFmt: RelativeDateTimeFormatter = {
         let f = RelativeDateTimeFormatter(); f.unitsStyle = .abbreviated; return f
@@ -225,11 +228,23 @@ private struct ResultRow: View {
         return parts.joined(separator: "  ·  ")
     }
 
+    private var appName: String { (result.app?.isEmpty == false ? result.app! : "•") }
+
+    private var badge: some View {
+        let initial = String(appName.first.map(String.init) ?? "•").uppercased()
+        return RoundedRectangle(cornerRadius: 7, style: .continuous)
+            .fill(Self.color(for: appName).gradient)
+            .frame(width: 28, height: 28)
+            .overlay(Text(initial).font(.system(size: 13, weight: .semibold)).foregroundStyle(.white))
+            .overlay(RoundedRectangle(cornerRadius: 7, style: .continuous).strokeBorder(.white.opacity(0.15), lineWidth: 0.5))
+    }
+
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
+        HStack(alignment: .top, spacing: 11) {
+            badge
             VStack(alignment: .leading, spacing: 3) {
                 Text(preview)
-                    .lineLimit(3)
+                    .lineLimit(2)
                     .font(.system(size: 13))
                     .foregroundStyle(selected ? Color.white : Color.primary)
                 if !meta.isEmpty {
@@ -243,11 +258,34 @@ private struct ResultRow: View {
             if result.favorite {
                 Image(systemName: "star.fill")
                     .font(.system(size: 11))
-                    .foregroundStyle(selected ? AnyShapeStyle(Color.white) : AnyShapeStyle(.yellow))
+                    .foregroundStyle(selected ? AnyShapeStyle(.white) : AnyShapeStyle(.yellow))
+                    .padding(.top, 2)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(selected ? Color.accentColor : Color.clear)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(selected
+                      ? AnyShapeStyle(LinearGradient(colors: [Color.accentColor.opacity(0.95), Color.accentColor.opacity(0.78)],
+                                                     startPoint: .top, endPoint: .bottom))
+                      : (hovering ? AnyShapeStyle(Color.primary.opacity(0.07)) : AnyShapeStyle(Color.clear)))
+        )
+        .overlay(
+            selected
+            ? RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(.white.opacity(0.18), lineWidth: 0.5)
+            : nil
+        )
+        .shadow(color: selected ? Color.accentColor.opacity(0.35) : .clear, radius: 6, y: 2)
+        .padding(.horizontal, 8)
+        .onHover { hovering = $0 }
+    }
+
+    /// Deterministic, pleasant color per source app.
+    static func color(for s: String) -> Color {
+        var h = 5381
+        for u in s.unicodeScalars { h = ((h << 5) &+ h) &+ Int(u.value) }
+        let hue = Double((h % 360 + 360) % 360) / 360.0
+        return Color(hue: hue, saturation: 0.55, brightness: 0.72)
     }
 }
