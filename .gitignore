@@ -1,0 +1,11 @@
+# Swift / SPM build artifacts
+.build/
+*.o
+*.swiftmodule
+DerivedData/
+
+# macOS
+.DS_Store
+
+# Local editor state
+.swiftpm/
