@@ -116,7 +116,69 @@ final class Indexer: ObservableObject {
         }
     }
 
-    // MARK: - Copy 'Em historical import (optional)
+    // MARK: - Import a Copy 'Em .cep export (user-chosen file)
+
+    /// Import every text + image entry from a Copy 'Em store at `storePath`
+    /// (the `Copy-em-Paste.storedata` inside a chosen `.cep` package). Explicit,
+    /// appends, not gated by the one-time flags. Calls back on the main thread.
+    func importFromStore(_ storePath: String, completion: @escaping (Result<Int, Error>) -> Void) {
+        queue.async { [weak self] in
+            func done(_ r: Result<Int, Error>) { DispatchQueue.main.async { completion(r) } }
+            guard let self, let sc = self.sidecar else { return }
+            func fail(_ m: String) {
+                done(.failure(NSError(domain: "Stash", code: 1, userInfo: [NSLocalizedDescriptionKey: m])))
+            }
+            guard SourceStore.exists(at: storePath),
+                  let source = try? SourceStore(path: storePath) else {
+                return fail("No Copy 'Em data found in that file.")
+            }
+            do {
+                let total = Int((try? source.liveCount()) ?? 0)
+                self.publish {
+                    self.phase = .importing
+                    self.buildTotal = max(total, 1)
+                    self.buildDone = 0
+                    self.message = "Importing \(total.formatted()) entries…"
+                }
+                // Text entries.
+                var inBatch = 0, added = 0
+                try sc.begin()
+                try source.forEachRow(afterPK: 0) { row in
+                    do { try sc.insertImported(row) } catch { return }
+                    inBatch += 1; added += 1
+                    if inBatch >= self.commitBatch {
+                        try? sc.commit(); try? sc.begin(); inBatch = 0
+                        let d = added; self.publish { self.buildDone = d; self.indexedCount = Int((try? sc.count()) ?? 0) }
+                    }
+                }
+                try sc.commit()
+                // Image entries.
+                try? FileManager.default.createDirectory(atPath: Sidecar.imagesDir, withIntermediateDirectories: true)
+                try source.forEachImageEntry { cand in
+                    guard let (data, ext) = CopyEmImage.extractLargest(from: cand.blob),
+                          let thumb = ImageThumb.make(from: data, maxPixel: 96) else { return }
+                    let label = "Image · \(thumb.w)×\(thumb.h)"
+                    let when = cand.created > 0 ? Date(timeIntervalSince1970: cand.created) : Date()
+                    guard let pk = try? sc.insertImage(label: label, app: cand.app, w: thumb.w, h: thumb.h,
+                                                       ext: ext, source: "copyem", at: when) else { return }
+                    try? data.write(to: URL(fileURLWithPath: Sidecar.imageFile(pk: pk, ext: ext)))
+                    try? thumb.png.write(to: URL(fileURLWithPath: Sidecar.thumbFile(pk: pk)))
+                    added += 1
+                }
+                let count = Int(try sc.count())
+                self.publish {
+                    self.indexedCount = count; self.buildDone = self.buildTotal
+                    self.phase = .ready; self.lastSync = Date(); self.message = "Ready"
+                }
+                done(.success(added))
+            } catch {
+                self.publish { self.phase = .ready; self.message = "Ready" }
+                done(.failure(error))
+            }
+        }
+    }
+
+    // MARK: - Copy 'Em historical import (live store, optional/auto)
 
     /// Pull entries from Copy 'Em that we haven't imported yet (idempotent via
     /// last_copyem_pk). `initial` shows the building UI for the first big import.

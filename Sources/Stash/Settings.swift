@@ -66,9 +66,7 @@ struct SettingsView: View {
                 LabeledContent("Clips stored", value: indexer.indexedCount.formatted())
                 HStack {
                     Button("Export…", action: onExport)
-                    if indexer.copyEmAvailable {
-                        Button("Import from Copy 'Em", action: onImport)
-                    }
+                    Button("Import from Copy 'Em…", action: onImport)
                     Spacer()
                 }
                 Text("Stored at ~/Library/Application Support/Stash")

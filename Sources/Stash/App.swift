@@ -22,7 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var settingsWindow = SettingsWindowController(
         indexer: indexer, ai: aiSettings,
         onExport: { [weak self] in self?.exportData() },
-        onImport: { [weak self] in self?.indexer.importFromCopyEm() })
+        onImport: { [weak self] in self?.importFromCEP() })
     private var statusItem: NSStatusItem!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -80,11 +80,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         exportItem.target = self
         menu.addItem(exportItem)
 
-        if indexer.copyEmAvailable {
-            let importItem = NSMenuItem(title: "Import from Copy 'Em", action: #selector(importCopyEm), keyEquivalent: "")
-            importItem.target = self
-            menu.addItem(importItem)
-        }
+        let importItem = NSMenuItem(title: "Import from Copy 'Em…", action: #selector(importCopyEm), keyEquivalent: "")
+        importItem.target = self
+        menu.addItem(importItem)
 
         menu.addItem(.separator())
 
@@ -117,9 +115,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func openSearch() { panelController.show() }
-    @objc private func importCopyEm() { indexer.importFromCopyEm() }
+    @objc private func importCopyEm() { importFromCEP() }
     @objc private func openSettings() { settingsWindow.show() }
     @objc private func quit() { NSApp.terminate(nil) }
+
+    /// Prompt for a Copy 'Em `.cep` export and import its clips.
+    private func importFromCEP() {
+        let panel = NSOpenPanel()
+        panel.title = "Import a Copy 'Em export"
+        panel.message = "Choose a Copy 'Em “.cep” export (or its Copy-em-Paste.storedata)."
+        panel.prompt = "Import"
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = true
+        panel.treatsFilePackagesAsDirectories = false   // a .cep package is one item
+        panel.allowsMultipleSelection = false
+
+        NSApp.activate(ignoringOtherApps: true)
+        panel.begin { [weak self] resp in
+            guard resp == .OK, let url = panel.url, let self else { return }
+            let store = Self.storedataPath(for: url)
+            self.indexer.importFromStore(store) { result in
+                let alert = NSAlert()
+                switch result {
+                case .success(let n):
+                    alert.messageText = "Imported \(n.formatted()) clips"
+                case .failure(let error):
+                    alert.alertStyle = .warning
+                    alert.messageText = "Import failed"
+                    alert.informativeText = error.localizedDescription
+                }
+                NSApp.activate(ignoringOtherApps: true)
+                alert.runModal()
+            }
+        }
+    }
+
+    /// Resolve the Core Data store inside a chosen .cep package (or the file itself).
+    private static func storedataPath(for url: URL) -> String {
+        let p = url.path
+        if p.hasSuffix(".storedata") { return p }
+        return p + "/Copy-em-Paste.storedata"
+    }
 
     @objc private func exportData() {
         let panel = NSSavePanel()
