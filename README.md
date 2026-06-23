@@ -125,35 +125,6 @@ git clone https://github.com/Alyetama/Stash.git Stash && cd Stash
 
 Install elsewhere with `INSTALL_DIR=~/Applications ./build.sh`.
 
-## Project layout
-
-```
-Package.swift            Swift package manifest
-build.sh                 Build + bundle + sign -> Stash.app
-make-dmg.sh              Build + package -> dist/Stash.dmg
-assets/                  App-icon source (AppIcon.svg) + generated iconset
-docs/                    GitHub Pages website
-Sources/Stash/
-  App.swift              Menu-bar status item, menu, hotkey, settings window
-  ClipboardMonitor.swift System clipboard watcher (text + image formats)
-  Indexer.swift          History manager: capture, import, delete/favorite, export
-  SidecarDB.swift        SQLite schema, FTS5, content-hash dedup, search engine
-  SourceStore.swift      Read-only Copy 'Em reader (optional import)
-  SearchController.swift  Query / paging / selection / copy / favorite / delete
-  SearchPanel.swift      Floating panel + compact dropdown + search field
-  SearchView.swift       SwiftUI search UI (results, app icons, context menu)
-  Settings.swift         Settings window (theme, login, shortcut, AI, data)
-  Theme.swift            Themes: System, Midnight, One Dark, Dracula, Nord, Tokyo Night
-  Transforms.swift       Copy-transformation settings + popover
-  AI.swift               OpenCode regex generation (Keychain-backed key)
-  Keychain.swift         Keychain wrapper for the API key
-  HotKeySettings.swift   Customizable global-shortcut recorder
-  Hotkey.swift           Carbon global hotkey
-  Icon.swift             Menu-bar clipboard glyph
-  SQLite.swift           Thin sqlite3 wrapper
-  Resources/             Info.plist + AppIcon.icns
-```
-
 ## Uninstall
 
 Quit Stash, delete it from Applications, and remove `~/Library/Application Support/Stash/`.
