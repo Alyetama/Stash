@@ -133,7 +133,7 @@ final class Indexer: ObservableObject {
                 return
             }
             guard let thumb = ImageThumb.make(from: data, maxPixel: 96) else { return }
-            let label = "Image · \(thumb.w)×\(thumb.h)"
+            let label = "\(ext == "gif" ? "GIF" : "Image") · \(thumb.w)×\(thumb.h)"
             guard let pk = try? sc.insertImage(label: label, app: app, w: thumb.w, h: thumb.h, ext: ext, hash: hash)
             else { return }
             try? FileManager.default.createDirectory(atPath: Sidecar.imagesDir, withIntermediateDirectories: true)
@@ -229,7 +229,7 @@ final class Indexer: ObservableObject {
                     let h = Self.fnv1a(data)
                     if !keepDuplicates && seenImage.contains(h) { return }
                     guard let thumb = ImageThumb.make(from: data, maxPixel: 96) else { return }
-                    let label = "Image · \(thumb.w)×\(thumb.h)"
+                    let label = "\(ext == "gif" ? "GIF" : "Image") · \(thumb.w)×\(thumb.h)"
                     let when = cand.created > 0 ? Date(timeIntervalSince1970: cand.created) : Date()
                     guard let pk = try? sc.insertImage(label: label, app: cand.app, w: thumb.w, h: thumb.h,
                                                        ext: ext, hash: Int64(bitPattern: h),

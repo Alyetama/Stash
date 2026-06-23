@@ -50,6 +50,9 @@ final class ClipboardMonitor {
     /// Pull image bytes off the pasteboard, normalising TIFF to PNG.
     private static func imageData(from pb: NSPasteboard) -> (Data, String)? {
         if let d = pb.data(forType: .png) { return (d, "png") }
+        // GIF before TIFF: a copied GIF often carries a TIFF rep too; keep the real
+        // GIF bytes (we still preview it as a static first-frame thumbnail).
+        if let d = pb.data(forType: NSPasteboard.PasteboardType("com.compuserve.gif")) { return (d, "gif") }
         if let d = pb.data(forType: NSPasteboard.PasteboardType("public.heic")) { return (d, "heic") }
         if let d = pb.data(forType: .tiff) {
             if let rep = NSBitmapImageRep(data: d),
