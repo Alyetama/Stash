@@ -3,15 +3,23 @@ import SwiftUI
 /// Persisted settings for the optional AI-assisted regex feature.
 /// The key is the user's own OpenCode API key, stored locally in UserDefaults.
 final class AISettings: ObservableObject {
-    @Published var apiKey: String { didSet { d.set(apiKey, forKey: "ai.apiKey") } }
+    /// Stored in the macOS Keychain (encrypted at rest), not in UserDefaults.
+    @Published var apiKey: String { didSet { Keychain.set(apiKey, account: Self.keyAccount) } }
     @Published var model: String  { didSet { d.set(model, forKey: "ai.model") } }
 
     /// OpenCode Zen — OpenAI-compatible chat-completions endpoint.
     let endpoint = "https://opencode.ai/zen/v1/chat/completions"
 
+    private static let keyAccount = "opencode.apiKey"
     private let d = UserDefaults.standard
+
     init() {
-        apiKey = d.string(forKey: "ai.apiKey") ?? ""
+        // One-time migration: move any key from the old plaintext plist into the Keychain.
+        if let legacy = d.string(forKey: "ai.apiKey"), !legacy.isEmpty {
+            Keychain.set(legacy, account: Self.keyAccount)
+            d.removeObject(forKey: "ai.apiKey")
+        }
+        apiKey = Keychain.get(account: Self.keyAccount) ?? ""
         model = d.string(forKey: "ai.model") ?? "deepseek-v4-flash-free"
     }
 
@@ -138,7 +146,7 @@ struct AIRegexView: View {
             if !error.isEmpty {
                 Text(error).font(.caption).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
             }
-            Text("Calls OpenCode (\(ai.model)). Your key is stored locally on this Mac.")
+            Text("Calls OpenCode (\(ai.model)). Your key is stored in your macOS Keychain.")
                 .font(.caption2).foregroundStyle(.tertiary)
         }
         .frame(width: 360)

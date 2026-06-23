@@ -37,7 +37,7 @@ Everything is **local-first** — no telemetry, and your clips never leave your 
 - ⚡ **Instant search**, three modes you can switch on the fly:
   - **Substring** — match anywhere inside an entry (FTS5 trigram, ≥3 chars).
   - **Words** — whole-word & prefix matching, relevance-ranked (FTS5 + bm25).
-  - **Regex** — full regular-expression search, with an optional **✨ AI generator**: add an [OpenCode](https://opencode.ai) API key and describe a pattern in plain English to have a free fast model write the regex for you.
+  - **Regex** — full regular-expression search, with an optional **✨ AI generator**: add an [OpenCode](https://opencode.ai) API key and describe a pattern in plain English to have a free fast model write the regex for you. Your API key is stored in the **macOS Keychain**.
 - 🕘 **Recent first** — opens to your latest clips; just start typing to search.
 - ♾️ **Endless results** — pages in 200 at a time, so you can scroll through every match.
 
