@@ -34,6 +34,7 @@ Most clipboard managers grind to a halt once your history grows large — their 
 - 🖱️ **One-click copy** — click a result (or press <kbd>↵</kbd>) to copy it and close.
 - ⭐ **Favorites** — right-click a result to favorite it; filter to just your starred clips from the dropdown in the search bar.
 - 🗑️ **Delete** — right-click any result to remove it from your history.
+- 🔤 **Copy transformations** — optionally upper/lower/capitalize, strip or trim whitespace, collapse to one line, remove empty lines, or prepend/append text to a clip as it's copied (the **Aa** button in the search bar).
 - ⌨️ **Global hotkey** — <kbd>⌃</kbd><kbd>⌥</kbd><kbd>⌘</kbd><kbd>C</kbd> from anywhere.
 - 🧭 **Menu bar native** — left-click opens search, right-click for the menu. No Dock clutter.
 - 💾 **Export** — save your entire history to a standalone SQLite database (a clean `clips` table) for backup or analysis.
@@ -60,6 +61,7 @@ Most clipboard managers grind to a halt once your history grows large — their 
 | Copy a clip | Click it, or press <kbd>↵</kbd> (copies and closes) |
 | Favorite / delete a clip | **Right-click** the result → Add to Favorites / Delete |
 | View favorites | Open the ⭐ dropdown in the search bar → **Favorites** |
+| Transform on copy | Click the **Aa** button → toggle Upper/Lower/Trim/Prepend… |
 | Dismiss | <kbd>Esc</kbd>, or click away |
 | Export history | Right-click the icon → **Export…** → choose a `.sqlite` file |
 | Menu (count, import, quit) | Right-click the menu-bar icon |

@@ -3,7 +3,9 @@ import SwiftUI
 struct SearchView: View {
     @ObservedObject var controller: SearchController
     @ObservedObject var indexer: Indexer
+    @ObservedObject var transforms: TransformSettings
     var onClose: () -> Void
+    @State private var showTransforms = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -56,6 +58,17 @@ struct SearchView: View {
             .menuStyle(.borderlessButton)
             .fixedSize()
             .help("Show all clips or only favorites")
+
+            // Copy transformations popover.
+            Button { showTransforms.toggle() } label: {
+                Image(systemName: "textformat")
+                    .foregroundStyle(transforms.isActive ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.secondary))
+            }
+            .buttonStyle(.borderless)
+            .help("Copy transformations")
+            .popover(isPresented: $showTransforms, arrowEdge: .bottom) {
+                TransformsView(settings: transforms)
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)

@@ -79,6 +79,7 @@ final class PanelController: NSObject, NSWindowDelegate {
         let panel = FloatingPanel()
         panel.delegate = self
         let root = SearchView(controller: controller, indexer: indexer,
+                              transforms: controller.transforms,
                               onClose: { [weak self] in self?.hide() })
         panel.contentView = NSHostingView(rootView: root)
         return panel

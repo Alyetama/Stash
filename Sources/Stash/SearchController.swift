@@ -14,6 +14,7 @@ final class SearchController: ObservableObject {
     @Published var favoritesOnly = false
 
     let sourcePath: String
+    let transforms: TransformSettings
     private weak var indexer: Indexer?
 
     private let searchQueue = DispatchQueue(label: "com.local.stash.search")
@@ -24,9 +25,10 @@ final class SearchController: ObservableObject {
     private var firstPageMS: Double = 0
     private let lock = NSLock()
 
-    init(sourcePath: String, indexer: Indexer? = nil) {
+    init(sourcePath: String, indexer: Indexer? = nil, transforms: TransformSettings = TransformSettings()) {
         self.sourcePath = sourcePath
         self.indexer = indexer
+        self.transforms = transforms
     }
 
     /// Run the current query from the top (or show recent items when it's empty).
@@ -169,6 +171,8 @@ final class SearchController: ObservableObject {
                let full = try? src.fullText(pk: sourcePk) {
                 text = full
             }
+            // Apply the user's copy transformations (upper/lower/trim/prepend…).
+            if let self { text = self.transforms.apply(to: text) }
             DispatchQueue.main.async {
                 let pb = NSPasteboard.general
                 pb.clearContents()
