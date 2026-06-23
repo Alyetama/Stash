@@ -16,6 +16,7 @@ struct SearchView: View {
         .frame(minWidth: 560, minHeight: 360)
         .onChange(of: controller.query) { _ in controller.runSearch() }
         .onChange(of: controller.mode) { _ in controller.runSearch() }
+        .onChange(of: controller.favoritesOnly) { _ in controller.runSearch() }
     }
 
     // MARK: header (search field + mode selector)
@@ -38,7 +39,23 @@ struct SearchView: View {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
-            .frame(width: 230)
+            .frame(width: 210)
+
+            // Scope dropdown: All clips vs Favorites.
+            Menu {
+                Button { controller.favoritesOnly = false } label: {
+                    Label("All clips", systemImage: controller.favoritesOnly ? "" : "checkmark")
+                }
+                Button { controller.favoritesOnly = true } label: {
+                    Label("Favorites", systemImage: controller.favoritesOnly ? "checkmark" : "star")
+                }
+            } label: {
+                Image(systemName: controller.favoritesOnly ? "star.fill" : "line.3.horizontal.decrease.circle")
+                    .foregroundStyle(controller.favoritesOnly ? AnyShapeStyle(.yellow) : AnyShapeStyle(.secondary))
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+            .help("Show all clips or only favorites")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -74,6 +91,25 @@ struct SearchView: View {
                                 // Single click copies to the clipboard and closes.
                                 controller.selected = idx
                                 controller.copySelected(done: onClose)
+                            }
+                            .contextMenu {
+                                Button {
+                                    controller.selected = idx
+                                    controller.copySelected(done: onClose)
+                                } label: { Label("Copy", systemImage: "doc.on.doc") }
+
+                                Button {
+                                    controller.toggleFavorite(r)
+                                } label: {
+                                    Label(r.favorite ? "Remove from Favorites" : "Add to Favorites",
+                                          systemImage: r.favorite ? "star.slash" : "star")
+                                }
+
+                                Divider()
+
+                                Button(role: .destructive) {
+                                    controller.delete(r)
+                                } label: { Label("Delete", systemImage: "trash") }
                             }
                             .onAppear {
                                 // Prefetch the next page as the user scrolls near the bottom.
@@ -177,18 +213,26 @@ private struct ResultRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(preview)
-                .lineLimit(3)
-                .font(.system(size: 13))
-                .foregroundStyle(selected ? Color.white : Color.primary)
-            if !meta.isEmpty {
-                Text(meta)
-                    .font(.caption2)
-                    .foregroundStyle(selected ? Color.white.opacity(0.85) : Color.secondary)
+        HStack(alignment: .top, spacing: 8) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(preview)
+                    .lineLimit(3)
+                    .font(.system(size: 13))
+                    .foregroundStyle(selected ? Color.white : Color.primary)
+                if !meta.isEmpty {
+                    Text(meta)
+                        .font(.caption2)
+                        .foregroundStyle(selected ? Color.white.opacity(0.85) : Color.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if result.favorite {
+                Image(systemName: "star.fill")
+                    .font(.system(size: 11))
+                    .foregroundStyle(selected ? AnyShapeStyle(Color.white) : AnyShapeStyle(.yellow))
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .background(selected ? Color.accentColor : Color.clear)

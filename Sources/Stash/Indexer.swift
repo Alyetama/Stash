@@ -140,6 +140,26 @@ final class Indexer: ObservableObject {
         }
     }
 
+    // MARK: - edits (delete / favorite)
+
+    func deleteEntry(pk: Int64, completion: @escaping () -> Void) {
+        queue.async { [weak self] in
+            guard let self, let sc = self.sidecar else { return }
+            try? sc.delete(pk: pk)
+            let count = Int((try? sc.count()) ?? 0)
+            self.publish { self.indexedCount = count }
+            DispatchQueue.main.async(execute: completion)
+        }
+    }
+
+    func setFavorite(pk: Int64, _ on: Bool, completion: @escaping () -> Void) {
+        queue.async { [weak self] in
+            guard let self, let sc = self.sidecar else { return }
+            try? sc.setFavorite(pk: pk, on)
+            DispatchQueue.main.async(execute: completion)
+        }
+    }
+
     // MARK: - export
 
     /// Export the whole clipboard history to a standalone SQLite database at `url`

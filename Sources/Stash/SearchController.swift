@@ -11,8 +11,10 @@ final class SearchController: ObservableObject {
     @Published private(set) var status = ""
     @Published private(set) var searching = false
     @Published private(set) var hasMore = false
+    @Published var favoritesOnly = false
 
     let sourcePath: String
+    private weak var indexer: Indexer?
 
     private let searchQueue = DispatchQueue(label: "com.local.stash.search")
     private var engine: SearchEngine?
@@ -22,7 +24,10 @@ final class SearchController: ObservableObject {
     private var firstPageMS: Double = 0
     private let lock = NSLock()
 
-    init(sourcePath: String) { self.sourcePath = sourcePath }
+    init(sourcePath: String, indexer: Indexer? = nil) {
+        self.sourcePath = sourcePath
+        self.indexer = indexer
+    }
 
     /// Run the current query from the top (or show recent items when it's empty).
     /// Cancels any in-flight search.
@@ -44,6 +49,7 @@ final class SearchController: ObservableObject {
     private func loadPage(offset: Int, replace: Bool, gen: Int, start: Date) {
         let q = query
         let m = mode
+        let favs = favoritesOnly
         let recent = q.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         searchQueue.async { [weak self] in
             guard let self else { return }
@@ -55,9 +61,9 @@ final class SearchController: ObservableObject {
                 return
             }
             let page = recent
-                ? engine.recent(offset: offset, limit: SearchEngine.pageSize)
+                ? engine.recent(offset: offset, limit: SearchEngine.pageSize, favoritesOnly: favs)
                 : engine.search(q, mode: m, offset: offset,
-                                limit: SearchEngine.pageSize,
+                                limit: SearchEngine.pageSize, favoritesOnly: favs,
                                 isCancelled: { !self.isCurrent(gen) })
             guard self.isCurrent(gen) else { return }
             let ms = Date().timeIntervalSince(start) * 1000
@@ -77,12 +83,14 @@ final class SearchController: ObservableObject {
     private func updateStatus() {
         let n = results.count
         if n == 0 {
-            status = lastWasRecent ? "" : "No matches"
+            if favoritesOnly { status = lastWasRecent ? "No favorites yet" : "No matching favorites" }
+            else { status = lastWasRecent ? "" : "No matches" }
             return
         }
         if lastWasRecent {
-            status = hasMore ? "Latest \(n) — newest first (scroll for more)"
-                             : "\(n) items — newest first"
+            let label = favoritesOnly ? "favorites" : "items"
+            status = hasMore ? "Latest \(n) \(label) (scroll for more)"
+                             : "\(n) \(label) — newest first"
         } else {
             let noun = n == 1 ? "result" : "results"
             let shown = hasMore ? "\(n)+ \(noun) (scroll for more)" : "\(n) \(noun)"
@@ -104,6 +112,37 @@ final class SearchController: ObservableObject {
         searching = false
         hasMore = false
         loadingMore = false
+        favoritesOnly = false
+    }
+
+    // MARK: favorite / delete
+
+    private func withFavorite(_ r: SearchResult, _ f: Bool) -> SearchResult {
+        SearchResult(pk: r.pk, text: r.text, app: r.app, list: r.list, created: r.created,
+                     useCount: r.useCount, source: r.source, sourcePk: r.sourcePk, favorite: f)
+    }
+
+    func toggleFavorite(_ r: SearchResult) {
+        let newVal = !r.favorite
+        if let i = results.firstIndex(where: { $0.pk == r.pk }) {
+            if favoritesOnly && !newVal {          // unfavoriting while viewing favorites → drop it
+                results.remove(at: i)
+                if selected >= results.count { selected = max(0, results.count - 1) }
+            } else {
+                results[i] = withFavorite(results[i], newVal)
+            }
+        }
+        indexer?.setFavorite(pk: r.pk, newVal) {}
+        updateStatus()
+    }
+
+    func delete(_ r: SearchResult) {
+        if let i = results.firstIndex(where: { $0.pk == r.pk }) {
+            results.remove(at: i)
+            if selected >= results.count { selected = max(0, results.count - 1) }
+        }
+        indexer?.deleteEntry(pk: r.pk) {}
+        updateStatus()
     }
 
     // MARK: selection

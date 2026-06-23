@@ -17,6 +17,7 @@ struct SearchResult: Identifiable {
     let useCount: Int64
     let source: String?     // "clipboard" | "copyem"
     let sourcePk: Int64?    // Copy 'Em Z_PK for imported rows (for full-text fetch)
+    let favorite: Bool
     var id: Int64 { pk }
 }
 
@@ -36,7 +37,7 @@ final class SidecarDB {
 
     static let schemaVersion = 2
     static let clipTextCap = 1_000_000   // self-captured clips stored in full up to this
-    static let cols = "e.pk, e.text, e.app, e.list, e.created, e.usecount, e.source, e.source_pk"
+    static let cols = "e.pk, e.text, e.app, e.list, e.created, e.usecount, e.source, e.source_pk, e.favorite"
 
     init() throws {
         try FileManager.default.createDirectory(
@@ -68,6 +69,9 @@ final class SidecarDB {
             try createTables()
             try setMeta("schema_version", String(SidecarDB.schemaVersion))
         }
+        // Additive migrations (never wipe data): add the favorite flag if missing.
+        try? db.exec("ALTER TABLE entries ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0;")
+        try? db.exec("CREATE INDEX IF NOT EXISTS entries_favorite ON entries(favorite);")
     }
 
     private func createTables() throws {
@@ -80,7 +84,8 @@ final class SidecarDB {
                 created   REAL,
                 usecount  INTEGER,
                 source    TEXT,
-                source_pk INTEGER
+                source_pk INTEGER,
+                favorite  INTEGER NOT NULL DEFAULT 0
             );
             CREATE INDEX entries_created ON entries(created);
             CREATE INDEX entries_source_pk ON entries(source_pk);
@@ -154,6 +159,20 @@ final class SidecarDB {
 
     func count() throws -> Int64 { try db.scalarInt("SELECT COUNT(*) FROM entries") ?? 0 }
 
+    /// Delete one entry (FTS rows are removed by the AFTER DELETE trigger).
+    func delete(pk: Int64) throws {
+        let s = try db.prepare("DELETE FROM entries WHERE pk = ?")
+        defer { s.finalize() }
+        s.bind(1, pk); try s.step()
+    }
+
+    /// Mark or unmark an entry as a favorite.
+    func setFavorite(pk: Int64, _ on: Bool) throws {
+        let s = try db.prepare("UPDATE entries SET favorite = ? WHERE pk = ?")
+        defer { s.finalize() }
+        s.bind(1, Int64(on ? 1 : 0)); s.bind(2, pk); try s.step()
+    }
+
     func setMeta(_ key: String, _ value: String) throws {
         let s = try db.prepare("INSERT OR REPLACE INTO meta(key,value) VALUES(?,?)")
         defer { s.finalize() }
@@ -179,10 +198,11 @@ final class SearchEngine {
     }
 
     /// Most recently added entries (newest first) — shown when the query is empty.
-    func recent(offset: Int, limit: Int) -> [SearchResult] {
+    func recent(offset: Int, limit: Int, favoritesOnly: Bool) -> [SearchResult] {
         do {
             let s = try db.prepare("""
                 SELECT \(SidecarDB.cols) FROM entries e
+                \(favoritesOnly ? "WHERE e.favorite = 1" : "")
                 ORDER BY e.created DESC, e.pk DESC
                 LIMIT ? OFFSET ?
             """)
@@ -197,14 +217,14 @@ final class SearchEngine {
 
     /// Fetch one page of results. `offset` is how many already-loaded rows to skip.
     func search(_ raw: String, mode: SearchMode, offset: Int, limit: Int,
-                isCancelled: () -> Bool) -> [SearchResult] {
+                favoritesOnly: Bool, isCancelled: () -> Bool) -> [SearchResult] {
         let query = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return [] }
         do {
             switch mode {
-            case .substring: return try ftsSearch(query, table: "fts_trigram", trigram: true, offset: offset, limit: limit)
-            case .words:     return try ftsSearch(query, table: "fts_words", trigram: false, offset: offset, limit: limit)
-            case .regex:     return try regexSearch(query, offset: offset, limit: limit, isCancelled: isCancelled)
+            case .substring: return try ftsSearch(query, table: "fts_trigram", trigram: true, offset: offset, limit: limit, favoritesOnly: favoritesOnly)
+            case .words:     return try ftsSearch(query, table: "fts_words", trigram: false, offset: offset, limit: limit, favoritesOnly: favoritesOnly)
+            case .regex:     return try regexSearch(query, offset: offset, limit: limit, favoritesOnly: favoritesOnly, isCancelled: isCancelled)
             }
         } catch {
             return []
@@ -232,14 +252,14 @@ final class SearchEngine {
     }
 
     private func ftsSearch(_ query: String, table: String, trigram: Bool,
-                           offset: Int, limit: Int) throws -> [SearchResult] {
+                           offset: Int, limit: Int, favoritesOnly: Bool) throws -> [SearchResult] {
         guard let expr = ftsExpression(query, trigram: trigram) else { return [] }
         let order = trigram ? "e.created DESC" : "bm25(\(table))"
         let sql = """
             SELECT \(SidecarDB.cols)
             FROM \(table) f
             JOIN entries e ON e.pk = f.rowid
-            WHERE f.\(table) MATCH ?
+            WHERE f.\(table) MATCH ?\(favoritesOnly ? " AND e.favorite = 1" : "")
             ORDER BY \(order)
             LIMIT ? OFFSET ?
         """
@@ -254,14 +274,18 @@ final class SearchEngine {
     // MARK: regex (full scan of the compact text)
 
     private func regexSearch(_ pattern: String, offset: Int, limit: Int,
-                             isCancelled: () -> Bool) throws -> [SearchResult] {
+                             favoritesOnly: Bool, isCancelled: () -> Bool) throws -> [SearchResult] {
         let re: NSRegularExpression
         do {
             re = try NSRegularExpression(pattern: pattern, options: [.caseInsensitive])
         } catch {
             return []
         }
-        let s = try db.prepare("SELECT \(SidecarDB.cols) FROM entries e ORDER BY e.created DESC")
+        let s = try db.prepare("""
+            SELECT \(SidecarDB.cols) FROM entries e
+            \(favoritesOnly ? "WHERE e.favorite = 1" : "")
+            ORDER BY e.created DESC
+        """)
         defer { s.finalize() }
         var out: [SearchResult] = []
         var matchIndex = 0
@@ -291,6 +315,6 @@ final class SearchEngine {
         SearchResult(
             pk: s.int(0), text: text, app: s.string(2), list: s.string(3),
             created: s.double(4), useCount: s.int(5), source: s.string(6),
-            sourcePk: s.isNull(7) ? nil : s.int(7))
+            sourcePk: s.isNull(7) ? nil : s.int(7), favorite: s.int(8) != 0)
     }
 }
