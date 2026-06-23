@@ -98,22 +98,40 @@ struct AIService {
         ]
         req.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
-        URLSession.shared.dataTask(with: req) { data, _, err in
+        URLSession.shared.dataTask(with: req) { data, resp, err in
             if let err { return completion(.failure(err)) }
             guard let data else { return completion(.failure(AIError.empty)) }
-            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                return completion(.failure(AIError.parse))
+            let status = (resp as? HTTPURLResponse)?.statusCode ?? 0
+            let raw = String(data: data, encoding: .utf8) ?? ""
+
+            guard let json = try? JSONSerialization.jsonObject(with: data) else {
+                return completion(.failure(AIError.api("HTTP \(status): \(raw.prefix(180))")))
             }
-            if let choices = json["choices"] as? [[String: Any]],
-               let msg = choices.first?["message"] as? [String: Any],
-               let content = msg["content"] as? String {
-                let cleaned = Self.clean(content)
-                cleaned.isEmpty ? completion(.failure(AIError.parse)) : completion(.success(cleaned))
-            } else if let e = json["error"] as? [String: Any], let m = e["message"] as? String {
-                completion(.failure(AIError.api(m)))
-            } else {
-                completion(.failure(AIError.parse))
+            guard let obj = json as? [String: Any] else {
+                return completion(.failure(AIError.api("HTTP \(status): \(raw.prefix(180))")))
             }
+
+            // Error shapes: {"error":{"message":...}} or {"error":"..."}.
+            if let e = obj["error"] {
+                let m = (e as? [String: Any])?["message"] as? String ?? (e as? String) ?? "\(e)"
+                return completion(.failure(AIError.api(m)))
+            }
+
+            // Pull content from chat (message.content string OR array of parts) or text.
+            if let choices = obj["choices"] as? [[String: Any]], let first = choices.first {
+                var content = (first["message"] as? [String: Any])?["content"] as? String
+                if content == nil, let parts = (first["message"] as? [String: Any])?["content"] as? [[String: Any]] {
+                    content = parts.compactMap { $0["text"] as? String }.joined()
+                }
+                if content == nil { content = first["text"] as? String }
+                if let c = content {
+                    let cleaned = Self.clean(c)
+                    return cleaned.isEmpty
+                        ? completion(.failure(AIError.api("The model returned an empty result.")))
+                        : completion(.success(cleaned))
+                }
+            }
+            completion(.failure(AIError.api("Unexpected response (HTTP \(status)): \(raw.prefix(180))")))
         }.resume()
     }
 
