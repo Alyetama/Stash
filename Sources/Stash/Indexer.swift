@@ -103,9 +103,15 @@ final class Indexer: ObservableObject {
     }
 
     /// Called after we put something on the clipboard ourselves, so the monitor
-    /// doesn't re-record it as a new clip.
+    /// doesn't re-record it as a new clip. Runs synchronously when already on the
+    /// main thread (the copy path) so it lands before the next poll — otherwise the
+    /// clip Stash just copied out would be recorded again.
     func ignoreClipboardChange() {
-        DispatchQueue.main.async { [weak self] in self?.monitor?.markCurrentAsSeen() }
+        if Thread.isMainThread {
+            monitor?.markCurrentAsSeen()
+        } else {
+            DispatchQueue.main.async { [weak self] in self?.monitor?.markCurrentAsSeen() }
+        }
     }
 
     private func recordClip(text: String, app: String?) {
