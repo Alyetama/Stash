@@ -5,7 +5,7 @@
 # Stash
 
 **A fast, local clipboard manager for macOS.**
-Everything you copy, searchable in milliseconds — right from your menu bar.
+Everything you copy, searchable in milliseconds from your menu bar.
 
 ![Platform](https://img.shields.io/badge/macOS-13%2B-blue)
 ![Swift](https://img.shields.io/badge/Swift-5.9%2B-orange)
@@ -29,14 +29,14 @@ Press <kbd>⌃</kbd><kbd>⌥</kbd><kbd>C</kbd> (or click the menu-bar icon) to o
 
 ## Features
 
-- **Instant search** over your whole history — substring, whole-word, or regex. Stays fast even past a million clips.
-- **Captures everything** — text, images, and GIFs (PNG, JPEG, WebP, AVIF, HEIC, and more), each tagged with the app it came from.
-- **Groups & favorites** — sort clips into named groups and star the ones you reuse, then filter to them.
-- **Smart duplicates** — re-copying moves a clip to the top instead of cluttering your history (or keep every copy).
-- **Copy transformations** — tweak a clip as you copy it: change case, trim, single-line, prepend/append.
-- **AI regex** *(optional)* — describe a pattern in plain English and let a free model write the regex. Off until you add a key, which lives in your Keychain.
-- **Yours, made to fit** — six dark themes, a compact or centered panel, and a customizable global shortcut.
-- **100% local** — no accounts, no telemetry; your clips never leave your Mac.
+- **Instant search** over your whole history — substring, whole-word, or regex. Still fast past a million clips.
+- **Captures everything** — text, images, and GIFs (PNG, JPEG, WebP, AVIF, HEIC, and more), tagged with the app they came from.
+- **Groups & favorites** — sort clips into named groups, star the ones you reuse, filter to either.
+- **Smart duplicates** — re-copying something moves it to the top instead of piling up a second copy (or keep every copy, your call).
+- **Copy transformations** — change case, trim, single-line, prepend/append, applied as you copy.
+- **AI regex** *(optional)* — describe a pattern in plain English, a free model writes the regex. Off until you add a key, which lives in your Keychain.
+- **Six dark themes**, a compact or centered panel, a global shortcut you can rebind.
+- **100% local** — no accounts, no telemetry, clips never leave your Mac.
 
 ## Privacy
 
