@@ -25,6 +25,7 @@ final class SearchController: ObservableObject {
     private var generation = 0
     private var loadingMore = false
     private var lastWasRecent = false
+    private var invalidRegex = false
     private var firstPageMS: Double = 0
     private let lock = NSLock()
 
@@ -63,6 +64,14 @@ final class SearchController: ObservableObject {
         let m = mode
         let sc = scope
         let recent = q.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        // Flag an uncompilable regex so an empty result reads as "bad pattern" rather
+        // than a genuine miss (the engine also returns [] on a compile failure).
+        if m == .regex, !recent {
+            let pattern = q.trimmingCharacters(in: .whitespacesAndNewlines)
+            invalidRegex = (try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive])) == nil
+        } else {
+            invalidRegex = false
+        }
         searchQueue.async { [weak self] in
             guard let self else { return }
             if self.engine == nil { self.engine = try? SearchEngine() }
@@ -95,6 +104,7 @@ final class SearchController: ObservableObject {
     private func updateStatus() {
         let n = results.count
         if n == 0 {
+            if invalidRegex { status = "Invalid regex pattern"; return }
             switch scope {
             case .favorites:    status = lastWasRecent ? "No favorites yet" : "No matching favorites"
             case .group(let g): status = lastWasRecent ? "“\(g)” is empty" : "No matches in “\(g)”"

@@ -327,21 +327,6 @@ struct SearchView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private var emptyHint: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("Substring — matches text anywhere (min 3 chars)", systemImage: "textformat")
-            Label("Words — whole-word & prefix, ranked by relevance", systemImage: "text.word.spacing")
-            Label("Regex — full regular-expression scan", systemImage: "asterisk")
-            Divider().padding(.vertical, 4)
-            Text("\(indexer.indexedCount.formatted()) entries indexed · ↵ copies the highlighted result")
-                .font(.caption).foregroundStyle(.secondary)
-        }
-        .font(.callout)
-        .foregroundStyle(.secondary)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-        .padding()
-    }
-
     private func messageView(_ text: String, systemImage: String) -> some View {
         VStack(spacing: 10) {
             Image(systemName: systemImage).font(.system(size: 28)).foregroundStyle(.tertiary)
@@ -388,20 +373,33 @@ enum AppIconResolver {
         return img
     }
 
+    /// Standard app locations searched by name (LaunchServices' name-based lookup
+    /// is deprecated), newest macOS layout first.
+    private static let appDirs = [
+        "/Applications", "/Applications/Utilities",
+        "/System/Applications", "/System/Applications/Utilities",
+        NSHomeDirectory() + "/Applications",
+    ]
+
+    private static func bundleURL(named name: String) -> URL? {
+        for dir in appDirs {
+            let u = URL(fileURLWithPath: dir).appendingPathComponent(name + ".app")
+            if FileManager.default.fileExists(atPath: u.path) { return u }
+        }
+        return nil
+    }
+
     /// Map a recorded app name to its bundle URL. The recorded name is the app's
     /// *display* name, which can differ from its bundle filename (e.g. Copy 'Em
     /// stores "iTerm2" but the bundle on disk is "iTerm.app").
     private static func resolveURL(_ name: String) -> URL? {
-        let ws = NSWorkspace.shared
-        // 1. Exact bundle-filename match (Safari, Google Chrome, …).
-        if let p = ws.fullPath(forApplication: name) { return URL(fileURLWithPath: p) }
+        // 1. Bundle sitting at its standard filename (Safari, Google Chrome, …).
+        if let u = bundleURL(named: name) { return u }
         // 2. A running app whose display name matches (handles iTerm2 → iTerm.app).
-        if let u = ws.runningApplications.first(where: { $0.localizedName == name })?.bundleURL { return u }
+        if let u = NSWorkspace.shared.runningApplications.first(where: { $0.localizedName == name })?.bundleURL { return u }
         // 3. Strip a trailing version number from the name and retry (iTerm2 → iTerm).
         let stripped = name.replacingOccurrences(of: "\\s*\\d+$", with: "", options: .regularExpression)
-        if stripped != name, !stripped.isEmpty, let p = ws.fullPath(forApplication: stripped) {
-            return URL(fileURLWithPath: p)
-        }
+        if stripped != name, !stripped.isEmpty, let u = bundleURL(named: stripped) { return u }
         return nil
     }
 }
@@ -413,9 +411,16 @@ private enum RowCache {
     static var links: [Int64: [NSRange]] = [:]
     static var lines: [String: Int] = [:]
 
+    // This is a long-lived menu-bar agent, so the caches are bounded to keep memory
+    // flat while browsing a large history. Thumbnails hold real bitmaps, so the cap
+    // is tighter; a full flush is cheap since everything is recomputable from disk.
+    private static let thumbCap = 400
+    private static let textCap = 3000
+
     static func thumb(_ path: String) -> NSImage? {
         if let c = thumbs[path] { return c }
         guard let img = NSImage(contentsOfFile: path) else { return nil }
+        if thumbs.count >= thumbCap { thumbs.removeAll(keepingCapacity: true) }
         thumbs[path] = img
         return img
     }
@@ -423,6 +428,7 @@ private enum RowCache {
         if let c = links[pk] { return c }
         let ns = text as NSString
         let r = detector?.matches(in: text, range: NSRange(location: 0, length: ns.length)).map(\.range) ?? []
+        if links.count >= textCap { links.removeAll(keepingCapacity: true) }
         links[pk] = r
         return r
     }
@@ -430,6 +436,7 @@ private enum RowCache {
         let key = "\(pk):\(Int(width))"
         if let c = lines[key] { return c }
         let n = compute()
+        if lines.count >= textCap { lines.removeAll(keepingCapacity: true) }
         lines[key] = n
         return n
     }
