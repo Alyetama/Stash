@@ -74,7 +74,7 @@ final class Indexer: ObservableObject {
         }
         try? sc.begin()
         for (i, u) in updates.enumerated() {
-            upd.reset(); upd.bind(1, u.1); upd.bind(2, u.0); try? upd.step()
+            upd.reset(); upd.bind(1, u.1); upd.bind(2, u.0); _ = try? upd.step()
             if i % 5000 == 4999 { try? sc.commit(); try? sc.begin() }
         }
         try? sc.commit()

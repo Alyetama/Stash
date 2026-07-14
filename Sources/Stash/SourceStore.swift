@@ -55,11 +55,6 @@ final class SourceStore {
             "SELECT COUNT(*) FROM ZPASTEBOARDCONTENTS WHERE ZTRASHDATE IS NULL") ?? 0
     }
 
-    /// Highest Z_PK currently in the store (for cheap "anything new?" checks).
-    func maxPK() throws -> Int64 {
-        try db.scalarInt("SELECT MAX(Z_PK) FROM ZPASTEBOARDCONTENTS") ?? 0
-    }
-
     private static let selectSQL = """
         SELECT c.Z_PK,
                substr(w.ZSTRING, 1, \(SourceStore.indexTextCap)),
@@ -97,15 +92,6 @@ final class SourceStore {
         }
     }
 
-    /// Set of all live Z_PKs, for reconciling deletions against the index.
-    func livePKSet() throws -> Set<Int64> {
-        var set = Set<Int64>()
-        let s = try db.prepare("SELECT Z_PK FROM ZPASTEBOARDCONTENTS WHERE ZTRASHDATE IS NULL")
-        defer { s.finalize() }
-        while try s.step() { set.insert(s.int(0)) }
-        return set
-    }
-
     /// One text-less Copy 'Em entry whose pasteboard data may contain an image.
     struct ImageCandidate {
         var pk: Int64
@@ -124,16 +110,6 @@ final class SourceStore {
         ORDER BY c.ZCREATIONDATE
     """
 
-    /// Count of text-less entries that might hold an image (upper bound).
-    func imageEntryCount() throws -> Int64 {
-        try db.scalarInt("""
-            SELECT COUNT(*) FROM ZPASTEBOARDCONTENTS c
-            JOIN ZPASTEBOARDCONTENTSITEMSWRAPPER w ON c.ZITEMSWRAPPER = w.Z_PK
-            JOIN ZPASTEBOARDCONTENTSITEM i        ON i.Z5ITEMS = w.Z_PK
-            WHERE c.ZTRASHDATE IS NULL AND w.ZSTRING IS NULL AND i.ZTYPESANDDATA IS NOT NULL
-        """) ?? 0
-    }
-
     /// Stream text-less entries with their raw pasteboard-data blob.
     func forEachImageEntry(_ handler: (ImageCandidate) -> Void) throws {
         let s = try db.prepare(SourceStore.imageEntrySQL)
@@ -143,17 +119,5 @@ final class SourceStore {
             let created = s.isNull(3) ? 0 : s.double(3) + SourceStore.coreDataEpoch
             handler(ImageCandidate(pk: s.int(0), blob: blob, app: s.string(2), created: created))
         }
-    }
-
-    /// Full, untruncated text for one entry — fetched only when the user copies it.
-    func fullText(pk: Int64) throws -> String? {
-        let s = try db.prepare("""
-            SELECT w.ZSTRING FROM ZPASTEBOARDCONTENTS c
-            JOIN ZPASTEBOARDCONTENTSITEMSWRAPPER w ON c.ZITEMSWRAPPER = w.Z_PK
-            WHERE c.Z_PK = ?
-        """)
-        defer { s.finalize() }
-        s.bind(1, pk)
-        return try s.step() ? s.string(0) : nil
     }
 }

@@ -67,8 +67,11 @@ final class SidecarDB {
     private func migrate() throws {
         try db.exec("CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);")
         let version = Int(try getMeta("schema_version") ?? "0") ?? 0
-        if version != SidecarDB.schemaVersion {
-            // Rebuild on schema change (older builds keyed rows on Copy 'Em's pk).
+        // Legacy stores (schema < 2) keyed rows on Copy 'Em's pk and are structurally
+        // incompatible, so they're rebuilt (this also builds a fresh, empty store).
+        // From v2 on, natively-captured clips live nowhere else — every later change
+        // MUST be an additive migration (below) so a schema bump never wipes history.
+        if version < 2 {
             try db.exec("""
                 DROP TRIGGER IF EXISTS entries_ai;
                 DROP TRIGGER IF EXISTS entries_ad;
@@ -78,8 +81,8 @@ final class SidecarDB {
                 DELETE FROM meta WHERE key IN ('last_copyem_pk','copyem_imported','last_pk');
             """)
             try createTables()
-            try setMeta("schema_version", String(SidecarDB.schemaVersion))
         }
+        try setMeta("schema_version", String(SidecarDB.schemaVersion))
         // Additive migrations (never wipe data).
         try? db.exec("ALTER TABLE entries ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0;")
         try? db.exec("CREATE INDEX IF NOT EXISTS entries_favorite ON entries(favorite);")
@@ -212,12 +215,6 @@ final class SidecarDB {
         guard let s = try? db.prepare("UPDATE entries SET created = ?, usecount = usecount + 1 WHERE pk = ?") else { return }
         defer { s.finalize() }
         s.bind(1, date.timeIntervalSince1970); s.bind(2, pk); _ = try? s.step()
-    }
-
-    func updateHash(pk: Int64, hash: Int64) {
-        guard let s = try? db.prepare("UPDATE entries SET hash = ? WHERE pk = ?") else { return }
-        defer { s.finalize() }
-        s.bind(1, hash); s.bind(2, pk); _ = try? s.step()
     }
 
     /// Assign an entry to a named group (its `list`), or clear it with nil.
@@ -385,7 +382,9 @@ final class SearchEngine {
     private func ftsSearch(_ query: String, table: String, trigram: Bool,
                            offset: Int, limit: Int, scope: SearchScope) throws -> [SearchResult] {
         guard let expr = ftsExpression(query, trigram: trigram) else { return [] }
-        let order = trigram ? "e.created DESC" : "bm25(\(table))"
+        // e.pk tiebreak keeps OFFSET paging stable when many rows share a `created`
+        // value (e.g. undated Copy 'Em imports all stored with created = 0).
+        let order = trigram ? "e.created DESC, e.pk DESC" : "bm25(\(table)), e.pk DESC"
         let sql = """
             SELECT \(SidecarDB.cols)
             FROM \(table) f
@@ -417,7 +416,7 @@ final class SearchEngine {
         let s = try db.prepare("""
             SELECT \(SidecarDB.cols) FROM entries e
             \(scope.whereClause)
-            ORDER BY e.created DESC
+            ORDER BY e.created DESC, e.pk DESC
         """)
         defer { s.finalize() }
         if let g = scope.groupName { s.bind(1, g) }

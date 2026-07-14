@@ -190,11 +190,13 @@ struct SearchField: NSViewRepresentable {
         field.cell?.usesSingleLineMode = true
         context.coordinator.field = field
 
-        NotificationCenter.default.addObserver(
-            forName: .focusSearchField, object: nil, queue: .main) { _ in
+        // Kept so it can be removed in dismantleNSView — otherwise each panel rebuild
+        // (e.g. toggling compact mode) leaks an observer that retains the old field.
+        context.coordinator.focusObserver = NotificationCenter.default.addObserver(
+            forName: .focusSearchField, object: nil, queue: .main) { [weak field] _ in
             DispatchQueue.main.async {
-                field.window?.makeFirstResponder(field)
-                field.currentEditor()?.selectAll(nil)
+                field?.window?.makeFirstResponder(field)
+                field?.currentEditor()?.selectAll(nil)
             }
         }
         return field
@@ -204,9 +206,17 @@ struct SearchField: NSViewRepresentable {
         if nsView.stringValue != text { nsView.stringValue = text }
     }
 
+    static func dismantleNSView(_ nsView: NSTextField, coordinator: Coordinator) {
+        if let token = coordinator.focusObserver {
+            NotificationCenter.default.removeObserver(token)
+            coordinator.focusObserver = nil
+        }
+    }
+
     final class Coordinator: NSObject, NSTextFieldDelegate {
         let parent: SearchField
         weak var field: NSTextField?
+        var focusObserver: NSObjectProtocol?
         init(_ parent: SearchField) { self.parent = parent }
 
         func controlTextDidChange(_ obj: Notification) {
