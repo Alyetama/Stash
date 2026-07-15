@@ -100,14 +100,86 @@ struct SearchView: View {
         .frame(width: compact ? nil : 210)
     }
 
-    private var scopeIcon: String {
-        switch controller.scope {
-        case .favorites: return "star.fill"
-        case .group:     return "tag.fill"
-        case .all:       return "line.3.horizontal.decrease.circle"
+    private func isScope(_ s: SearchScope) -> Bool { controller.scope == s }
+
+    // MARK: pinned quick-access scope tab (beside the mode picker)
+
+    private var pinnedIsFavorites: Bool {
+        if case .group = controller.pinnedScope { return false }
+        return true
+    }
+    private func isPinnedGroup(_ g: String) -> Bool {
+        if case .group(let n) = controller.pinnedScope { return n == g }
+        return false
+    }
+    private var pinnedActive: Bool { controller.scope == controller.pinnedScope }
+    /// Rebind the tab to a scope and switch to it (that's the "easy access" bit).
+    private func selectPinned(_ s: SearchScope) {
+        controller.pinnedScope = s
+        controller.scope = s
+    }
+
+    @ViewBuilder private var pinnedRebindMenu: some View {
+        Button { selectPinned(.favorites) } label: {
+            Label("Favorites", systemImage: pinnedIsFavorites ? "checkmark" : "star")
+        }
+        if !groups.groups.isEmpty {
+            Divider()
+            ForEach(groups.groups, id: \.self) { g in
+                Button { selectPinned(.group(g)) } label: {
+                    Label(g, systemImage: isPinnedGroup(g) ? "checkmark" : "tag")
+                }
+            }
         }
     }
-    private func isScope(_ s: SearchScope) -> Bool { controller.scope == s }
+
+    /// A single quick-access tab styled like a sibling of the mode picker: click
+    /// toggles the pinned scope on/off, right-click rebinds it to a group.
+    // Truncate a name (ellipsis included) so it never renders wider than the default
+    // "Favorites" label. Width, not character count — 8 wide letters can out-measure
+    // 9 narrow ones in a proportional font.
+    private static let pinFont = NSFont.systemFont(ofSize: 12, weight: .semibold)
+    private static func pinTextWidth(_ s: String) -> CGFloat {
+        (s as NSString).size(withAttributes: [.font: pinFont]).width
+    }
+    private static let pinMaxWidth = pinTextWidth("Favorites")
+    private static func fitPinLabel(_ s: String) -> String {
+        guard pinTextWidth(s) > pinMaxWidth else { return s }
+        var i = s.count
+        while i > 1 {
+            i -= 1
+            let c = String(s.prefix(i)) + "…"
+            if pinTextWidth(c) <= pinMaxWidth { return c }
+        }
+        return "…"
+    }
+
+    private var pinnedScopeTab: some View {
+        let active = pinnedActive
+        let full = pinnedIsFavorites ? "Favorites" : (controller.pinnedScope.groupName ?? "Favorites")
+        let label = Self.fitPinLabel(full)   // never wider than the "Favorites" label
+        let icon = pinnedIsFavorites ? "star.fill" : "tag.fill"
+        return Button {
+            controller.scope = active ? .all : controller.pinnedScope
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: icon).font(.system(size: 9, weight: .semibold))
+                Text(label).font(.system(size: 12, weight: .semibold)).lineLimit(1)
+            }
+            .foregroundStyle(active ? AnyShapeStyle(.white) : AnyShapeStyle(.secondary))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(active ? AnyShapeStyle(theme.theme.accent)
+                                 : AnyShapeStyle(Color.primary.opacity(0.07))))
+            .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .contextMenu { pinnedRebindMenu }
+        .fixedSize()
+        .help("\(full) — click to toggle · right-click to change group")
+    }
 
     // Scope dropdown: All clips / Favorites / each named group.
     private var favoritesMenu: some View {
@@ -140,11 +212,11 @@ struct SearchView: View {
                 }
             }
         } label: {
-            Image(systemName: scopeIcon)
-                .foregroundStyle(isScope(.all) ? AnyShapeStyle(.secondary)
-                                 : (isScope(.favorites) ? AnyShapeStyle(.yellow) : AnyShapeStyle(theme.theme.accent)))
+            Image(systemName: "line.3.horizontal.decrease.circle")
+                .foregroundStyle(isScope(.all) ? AnyShapeStyle(.secondary) : AnyShapeStyle(theme.theme.accent))
         }
         .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
         .fixedSize()
         .help("Filter by favorites or a group")
     }
@@ -191,7 +263,7 @@ struct SearchView: View {
                 HStack(spacing: 10) { magnifier; searchFieldView; clearButton; settingsButton }
                 HStack(spacing: 8) {
                     modePicker.frame(maxWidth: .infinity)
-                    favoritesMenu; transformsButton; aiButton
+                    pinnedScopeTab; favoritesMenu; transformsButton; aiButton
                 }
             }
             .padding(.horizontal, 12)
@@ -200,7 +272,7 @@ struct SearchView: View {
         } else {
             HStack(spacing: 12) {
                 magnifier; searchFieldView; clearButton; modePicker
-                favoritesMenu; transformsButton; aiButton; settingsButton
+                pinnedScopeTab; favoritesMenu; transformsButton; aiButton; settingsButton
             }
             .padding(.horizontal, 16)
             .padding(.top, 18)
