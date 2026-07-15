@@ -12,6 +12,9 @@ final class SearchController: ObservableObject {
     @Published private(set) var searching = false
     @Published private(set) var hasMore = false
     @Published var scope: SearchScope = .all
+    /// One-click quick-access scope shown as a tab beside the mode picker. Defaults
+    /// to Favorites; the user can rebind it to any group. Persisted across launches.
+    @Published var pinnedScope: SearchScope = .favorites { didSet { Self.persistPinned(pinnedScope) } }
 
     let sourcePath: String
     let transforms: TransformSettings
@@ -40,6 +43,20 @@ final class SearchController: ObservableObject {
         self.ai = ai
         self.theme = theme
         self.groups = groups
+        self.pinnedScope = Self.loadPinned()   // set directly so didSet doesn't re-persist
+    }
+
+    // MARK: pinned scope persistence
+
+    private static let pinnedKey = "pinnedScope"
+    private static func persistPinned(_ s: SearchScope) {
+        // Only Favorites or a group is ever pinned; `.all` is the "off" state.
+        let v: String = { if case .group(let g) = s { return "g:" + g } else { return "*fav*" } }()
+        UserDefaults.standard.set(v, forKey: pinnedKey)
+    }
+    private static func loadPinned() -> SearchScope {
+        guard let v = UserDefaults.standard.string(forKey: pinnedKey) else { return .favorites }
+        return v.hasPrefix("g:") ? .group(String(v.dropFirst(2))) : .favorites
     }
 
     /// Run the current query from the top (or show recent items when it's empty).
