@@ -17,6 +17,8 @@ final class Indexer: ObservableObject {
     /// Opt-in: fetch page titles for copied links. Off by default — fetching sends
     /// the copied URL to that site, the one case where a clip leaves the machine.
     @Published var fetchLinkTitles: Bool { didSet { UserDefaults.standard.set(fetchLinkTitles, forKey: "fetchLinkTitles") } }
+    /// Show image clips as a large preview instead of a small thumbnail (opt-in).
+    @Published var largeImages: Bool { didSet { UserDefaults.standard.set(largeImages, forKey: "largeImages") } }
 
     let sourcePath: String
 
@@ -30,6 +32,7 @@ final class Indexer: ObservableObject {
         self.capturePaused = UserDefaults.standard.bool(forKey: "capturePaused")
         self.keepDuplicates = UserDefaults.standard.bool(forKey: "keepDuplicates")
         self.fetchLinkTitles = UserDefaults.standard.bool(forKey: "fetchLinkTitles")
+        self.largeImages = UserDefaults.standard.bool(forKey: "largeImages")
     }
 
     func start() {

@@ -46,7 +46,10 @@ struct SettingsView: View {
                          ? "The search panel drops down from the menu-bar icon in a smaller layout."
                          : "The search panel opens centered on screen (Spotlight-style).")
                         .font(.caption).foregroundStyle(.secondary)
-                    Toggle("Keep duplicate clips", isOn: $indexer.keepDuplicates)
+                    Toggle("Large image previews", isOn: $indexer.largeImages)
+                Text("Show copied images as a big preview instead of a small thumbnail.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Toggle("Keep duplicate clips", isOn: $indexer.keepDuplicates)
                 Toggle("Fetch page titles for links", isOn: $indexer.fetchLinkTitles)
                 Text(indexer.fetchLinkTitles
                      ? "Copied links are requested to read their title — that sends the URL to the site."
