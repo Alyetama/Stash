@@ -40,7 +40,12 @@ Press <kbd>⌃</kbd><kbd>⌥</kbd><kbd>C</kbd> (or click the menu-bar icon) to o
 
 ## Privacy
 
-Stash stores everything in a single local SQLite database at `~/Library/Application Support/Stash/`. Nothing is uploaded. The only feature that ever makes a network request is the opt-in AI regex helper, and only after you add an API key.
+Stash stores everything in a single local SQLite database at `~/Library/Application Support/Stash/`. Nothing is uploaded.
+
+Two features can make a network request, and both stay off until you turn them on:
+
+- **AI regex** sends your description (never your clips) to OpenCode, once you add an API key.
+- **Link titles** fetches a copied URL to read its `<title>`, which tells that site you copied the link. You can leave it off and still grab a single title by right-clicking a link clip.
 
 ## Coming from Copy 'Em?
 

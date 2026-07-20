@@ -167,13 +167,29 @@ final class SearchController: ObservableObject {
     private func withFavorite(_ r: SearchResult, _ f: Bool) -> SearchResult {
         SearchResult(pk: r.pk, text: r.text, app: r.app, list: r.list, created: r.created,
                      useCount: r.useCount, source: r.source, sourcePk: r.sourcePk, favorite: f,
-                     kind: r.kind, imgW: r.imgW, imgH: r.imgH, ext: r.ext)
+                     kind: r.kind, imgW: r.imgW, imgH: r.imgH, ext: r.ext, title: r.title)
     }
 
     private func withList(_ r: SearchResult, _ list: String?) -> SearchResult {
         SearchResult(pk: r.pk, text: r.text, app: r.app, list: list, created: r.created,
                      useCount: r.useCount, source: r.source, sourcePk: r.sourcePk, favorite: r.favorite,
-                     kind: r.kind, imgW: r.imgW, imgH: r.imgH, ext: r.ext)
+                     kind: r.kind, imgW: r.imgW, imgH: r.imgH, ext: r.ext, title: r.title)
+    }
+
+    private func withTitle(_ r: SearchResult, _ title: String?) -> SearchResult {
+        SearchResult(pk: r.pk, text: r.text, app: r.app, list: r.list, created: r.created,
+                     useCount: r.useCount, source: r.source, sourcePk: r.sourcePk, favorite: r.favorite,
+                     kind: r.kind, imgW: r.imgW, imgH: r.imgH, ext: r.ext, title: title)
+    }
+
+    /// Look up the page title for a link clip (explicit user action — makes a
+    /// network request to that URL).
+    func fetchTitle(_ r: SearchResult) {
+        indexer?.fetchTitle(pk: r.pk, text: r.text) { [weak self] title in
+            guard let self, let title,
+                  let i = self.results.firstIndex(where: { $0.pk == r.pk }) else { return }
+            self.results[i] = self.withTitle(self.results[i], title)
+        }
     }
 
     func toggleFavorite(_ r: SearchResult) {
