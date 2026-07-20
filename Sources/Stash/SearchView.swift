@@ -643,12 +643,29 @@ private struct ResultRow: View {
         HStack(alignment: .top, spacing: 11) {
             leading
             VStack(alignment: .leading, spacing: 3) {
-                // Link clips show the page title above the URL when we have one.
+                // Link clips show the page title as a chip above the URL.
                 if let t = result.title, !t.isEmpty {
-                    Text(t)
-                        .lineLimit(1)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(selected ? Color.white : Color.primary)
+                    HStack(spacing: 5) {
+                        Image(systemName: "globe")
+                            .font(.system(size: 9, weight: .semibold))
+                        Text(t)
+                            .font(.system(size: 12, weight: .medium))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
+                    .foregroundStyle(selected ? AnyShapeStyle(.white) : AnyShapeStyle(theme.accent))
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(selected ? Color.white.opacity(0.18) : theme.accent.opacity(0.12))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .strokeBorder(selected ? Color.white.opacity(0.28) : theme.accent.opacity(0.28),
+                                          lineWidth: 0.5)
+                    )
+                    .padding(.bottom, 1)
                 }
                 Text(styledPreview)
                     .lineLimit(expanded ? nil : 2)

@@ -9,6 +9,7 @@ struct SourceRow {
     var created: Double      // unix seconds (0 if unknown)
     var lastUsed: Double
     var useCount: Int64
+    var title: String?       // Copy 'Em records the page title for copied links
 }
 
 /// Strictly read-only access to Copy 'Em's Core Data SQLite store.
@@ -62,7 +63,8 @@ final class SourceStore {
                l.ZNAME,
                c.ZCREATIONDATE,
                c.ZLASTUSEDATE,
-               c.ZUSECOUNT
+               c.ZUSECOUNT,
+               c.ZNAME
         FROM ZPASTEBOARDCONTENTS c
         JOIN ZPASTEBOARDCONTENTSITEMSWRAPPER w ON c.ZITEMSWRAPPER = w.Z_PK
         LEFT JOIN ZPASTEBOARDCONTENTSAPP  a ON c.ZAPPLICATION = a.Z_PK
@@ -87,7 +89,8 @@ final class SourceStore {
                 list: s.string(3),
                 created: createdRaw == 0 ? 0 : createdRaw + SourceStore.coreDataEpoch,
                 lastUsed: lastRaw == 0 ? 0 : lastRaw + SourceStore.coreDataEpoch,
-                useCount: s.int(6)
+                useCount: s.int(6),
+                title: s.string(7)
             ))
         }
     }
