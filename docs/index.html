@@ -118,6 +118,11 @@
   .modal li b{color:var(--text)}
   .modal .pill{background:#252a44;border:1px solid var(--line);border-radius:6px;padding:.05em .45em;font-size:.9em}
   .modal .row{display:flex;gap:10px;justify-content:flex-end;margin-top:4px}
+  .modeshow{position:relative;max-width:800px;margin:0 auto}
+  .modeshow img{width:100%;display:block;border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+  .modeshow .top{position:absolute;inset:0;animation:xfade 6.5s ease-in-out infinite;will-change:opacity}
+  @keyframes xfade{0%,34%{opacity:0}48%,86%{opacity:1}100%{opacity:0}}
+  @media (prefers-reduced-motion: reduce){.modeshow .top{animation:none;opacity:1}}
 </style>
 </head>
 <body>
@@ -180,6 +185,17 @@
     </div>
   </div>
 </header>
+
+<section>
+  <div class="wrap">
+    <h2>Two layouts, one shortcut</h2>
+    <p class="lead">Open Stash centered like Spotlight, or as a compact dropdown right under the menu-bar icon — switch anytime in Settings.</p>
+    <div class="modeshow">
+      <img src="assets/mode-centered.png" alt="Stash centered, Spotlight-style">
+      <img class="top" src="assets/mode-compact.png" alt="Stash compact, under the menu bar">
+    </div>
+  </div>
+</section>
 
 <section>
   <div class="wrap">

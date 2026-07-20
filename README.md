@@ -12,7 +12,9 @@ Everything you copy, searchable in milliseconds from your menu bar.
 ![Local](https://img.shields.io/badge/data-100%25%20local-success)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-<img src="docs/assets/screenshot.png" width="760" alt="Stash search panel">
+<img src="docs/assets/modes.gif" width="760" alt="Stash in centered and compact menu-bar modes">
+
+<sub>Open it centered like Spotlight, or as a compact dropdown under the menu-bar icon.</sub>
 
 </div>
 
