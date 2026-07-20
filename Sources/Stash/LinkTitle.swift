@@ -38,11 +38,19 @@ enum LinkTitle {
         }.resume()
     }
 
-    /// Extract and tidy the <title> from (the head of) an HTML document.
+    /// Extract and tidy the <title> from an HTML document.
+    ///
+    /// The tag is located in the raw bytes rather than by decoding a fixed head:
+    /// some pages (YouTube) emit hundreds of KB of inline script before <title>.
     static func parseTitle(_ data: Data) -> String? {
-        let head = data.prefix(256_000)
-        guard let html = String(data: head, encoding: .utf8)
-                ?? String(data: head, encoding: .isoLatin1) else { return nil }
+        let scan = data.prefix(4_000_000)
+        guard let offset = byteOffset(of: Array("<title".utf8), in: scan) else { return nil }
+        let start = scan.index(scan.startIndex, offsetBy: offset)
+        let end = scan.index(start, offsetBy: 16_384, limitedBy: scan.endIndex) ?? scan.endIndex
+        let window = scan[start..<end]
+
+        guard let html = String(data: window, encoding: .utf8)
+                ?? String(data: window, encoding: .isoLatin1) else { return nil }
         guard let r = html.range(of: "(?s)<title[^>]*>(.*?)</title>",
                                  options: [.regularExpression, .caseInsensitive]) else { return nil }
 
@@ -54,6 +62,22 @@ enum LinkTitle {
         t = t.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
         t = t.trimmingCharacters(in: .whitespacesAndNewlines)
         return t.isEmpty ? nil : String(t.prefix(200))
+    }
+
+    /// Case-insensitive ASCII byte search; returns the offset from the slice start.
+    private static func byteOffset(of needle: [UInt8], in data: Data) -> Int? {
+        guard !needle.isEmpty, data.count >= needle.count else { return nil }
+        let lower = needle.map { $0 | 0x20 }
+        return data.withUnsafeBytes { raw -> Int? in
+            let buf = raw.bindMemory(to: UInt8.self)
+            let n = lower.count
+            guard buf.count >= n else { return nil }
+            outer: for i in 0...(buf.count - n) {
+                for k in 0..<n where (buf[i + k] | 0x20) != lower[k] { continue outer }
+                return i
+            }
+            return nil
+        }
     }
 
     private static let named: [String: String] = [
