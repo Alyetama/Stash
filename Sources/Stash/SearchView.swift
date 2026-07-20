@@ -326,7 +326,7 @@ struct SearchView: View {
             ScrollView {
                 LazyVStack(spacing: 1) {
                     ForEach(Array(controller.results.enumerated()), id: \.element.pk) { idx, r in
-                        ResultRow(result: r, selected: idx == controller.selected, textWidth: rowTextWidth)
+                        ResultRow(result: r, selected: idx == controller.selected, textWidth: rowTextWidth, bigImages: indexer.largeImages)
                             .id(r.pk)
                             .contentShape(Rectangle())
                             .onTapGesture {
@@ -503,6 +503,18 @@ private enum RowCache {
         thumbs[path] = img
         return img
     }
+
+    static var fulls: [String: NSImage] = [:]
+    private static let fullCap = 120
+    /// Full-resolution image for the large-preview mode (cached; opt-in only).
+    static func fullImage(_ path: String?) -> NSImage? {
+        guard let path else { return nil }
+        if let c = fulls[path] { return c }
+        guard let img = NSImage(contentsOfFile: path) else { return nil }
+        if fulls.count >= fullCap { fulls.removeAll(keepingCapacity: true) }
+        fulls[path] = img
+        return img
+    }
     static func linkRanges(pk: Int64, text: String, detector: NSDataDetector?) -> [NSRange] {
         if let c = links[pk] { return c }
         let ns = text as NSString
@@ -525,6 +537,7 @@ private struct ResultRow: View {
     let result: SearchResult
     let selected: Bool
     var textWidth: CGFloat = 0     // measured once at the list level, not per row
+    var bigImages: Bool = false    // large preview for image clips (opt-in)
     @Environment(\.appTheme) private var theme
     @State private var hovering = false
     @State private var expanded = false
@@ -640,6 +653,57 @@ private struct ResultRow: View {
     }
 
     var body: some View {
+        content
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(selected
+                          ? AnyShapeStyle(LinearGradient(colors: theme.selectionGradient, startPoint: .top, endPoint: .bottom))
+                          : (hovering ? AnyShapeStyle(Color.primary.opacity(0.07)) : AnyShapeStyle(Color.clear)))
+            )
+            .overlay(selected
+                     ? RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(.white.opacity(0.18), lineWidth: 0.5)
+                     : nil)
+            .shadow(color: selected ? theme.glow : .clear, radius: 6, y: 2)
+            .padding(.horizontal, 8)
+            .onHover { hovering = $0 }
+    }
+
+    @ViewBuilder private var content: some View {
+        if bigImages, result.isImage {
+            bigImageRow
+        } else {
+            standardRow
+        }
+    }
+
+    private var bigImageRow: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let img = RowCache.fullImage(result.imagePath) {
+                Image(nsImage: img).resizable().aspectRatio(contentMode: .fit)
+                    .frame(maxWidth: .infinity)
+                    .frame(maxHeight: 240)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(.white.opacity(0.15), lineWidth: 0.5))
+            } else {
+                leading   // fall back to the thumbnail if the full image is missing
+            }
+            HStack(spacing: 8) {
+                if result.favorite {
+                    Image(systemName: "star.fill").font(.system(size: 11))
+                        .foregroundStyle(selected ? AnyShapeStyle(.white) : AnyShapeStyle(.yellow))
+                }
+                if !meta.isEmpty {
+                    Text(meta).font(.caption2)
+                        .foregroundStyle(selected ? Color.white.opacity(0.85) : Color.secondary)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var standardRow: some View {
         HStack(alignment: .top, spacing: 11) {
             leading
             VStack(alignment: .leading, spacing: 3) {
@@ -702,23 +766,6 @@ private struct ResultRow: View {
             }
             .padding(.top, 1)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 9)
-        .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(selected
-                      ? AnyShapeStyle(LinearGradient(colors: theme.selectionGradient,
-                                                     startPoint: .top, endPoint: .bottom))
-                      : (hovering ? AnyShapeStyle(Color.primary.opacity(0.07)) : AnyShapeStyle(Color.clear)))
-        )
-        .overlay(
-            selected
-            ? RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(.white.opacity(0.18), lineWidth: 0.5)
-            : nil
-        )
-        .shadow(color: selected ? theme.glow : .clear, radius: 6, y: 2)
-        .padding(.horizontal, 8)
-        .onHover { hovering = $0 }
     }
 
     /// Deterministic, pleasant color per source app.
