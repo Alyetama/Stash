@@ -12,12 +12,13 @@ Everything you copy, searchable in milliseconds from your menu bar.
 ![Local](https://img.shields.io/badge/data-100%25%20local-success)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-<table>
-<tr>
-<td align="center"><img src="docs/assets/mode-centered.png" width="400" alt="Centered, Spotlight-style"><br><sub>Centered, Spotlight-style</sub></td>
-<td align="center"><img src="docs/assets/mode-compact.png" width="400" alt="Compact menu-bar dropdown"><br><sub>Compact, under the menu bar</sub></td>
-</tr>
-</table>
+<img src="docs/assets/mode-centered.png" width="720" alt="Centered, Spotlight-style">
+
+<sub>Centered, Spotlight-style</sub>
+
+<img src="docs/assets/mode-compact.png" width="720" alt="Compact menu-bar dropdown">
+
+<sub>Compact, under the menu bar</sub>
 
 </div>
 
