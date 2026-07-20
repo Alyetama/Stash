@@ -182,8 +182,8 @@ final class SidecarDB {
     }
 
     private lazy var importStmt = try! db.prepare("""
-        INSERT INTO entries(text, app, list, created, usecount, source, source_pk, hash)
-        VALUES (?, ?, ?, ?, ?, 'copyem', ?, ?)
+        INSERT INTO entries(text, app, list, created, usecount, source, source_pk, hash, title)
+        VALUES (?, ?, ?, ?, ?, 'copyem', ?, ?, ?)
     """)
 
     /// Insert a historical entry imported from Copy 'Em.
@@ -197,6 +197,14 @@ final class SidecarDB {
         s.bind(5, r.useCount)
         s.bind(6, r.pk)         // source_pk = Copy 'Em Z_PK
         s.bind(7, hash)
+        // Copy 'Em's name is the page title for copied links — keep it for those,
+        // so imports get titles without any network request.
+        let t = (r.title ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if !t.isEmpty, t != r.text, LinkTitle.url(in: r.text) != nil {
+            s.bind(8, String(t.prefix(200)))
+        } else {
+            s.bindNull(8)
+        }
         try s.step()
     }
 
