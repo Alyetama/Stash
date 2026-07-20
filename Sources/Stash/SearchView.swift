@@ -349,6 +349,13 @@ struct SearchView: View {
 
                                 groupSubmenu(for: r)
 
+                                // Link clips: look up the page title on demand.
+                                if (r.title ?? "").isEmpty, LinkTitle.url(in: r.text) != nil {
+                                    Button {
+                                        controller.fetchTitle(r)
+                                    } label: { Label("Fetch page title", systemImage: "link") }
+                                }
+
                                 Divider()
 
                                 Button(role: .destructive) {
@@ -593,6 +600,8 @@ private struct ResultRow: View {
         return parts.joined(separator: "  ·  ")
     }
 
+    private var hasTitle: Bool { !(result.title ?? "").isEmpty }
+
     private var appName: String { (result.app?.isEmpty == false ? result.app! : "•") }
 
     @ViewBuilder private var badge: some View {
@@ -634,10 +643,18 @@ private struct ResultRow: View {
         HStack(alignment: .top, spacing: 11) {
             leading
             VStack(alignment: .leading, spacing: 3) {
+                // Link clips show the page title above the URL when we have one.
+                if let t = result.title, !t.isEmpty {
+                    Text(t)
+                        .lineLimit(1)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(selected ? Color.white : Color.primary)
+                }
                 Text(styledPreview)
                     .lineLimit(expanded ? nil : 2)
-                    .font(.system(size: 13))
-                    .foregroundStyle(selected ? Color.white : Color.primary)
+                    .font(.system(size: hasTitle ? 11 : 13))
+                    .foregroundStyle(selected ? Color.white.opacity(hasTitle ? 0.8 : 1)
+                                              : (hasTitle ? Color.secondary : Color.primary))
                     .tint(selected ? Color.white : Color(red: 0.30, green: 0.55, blue: 1.0))
                 if !meta.isEmpty {
                     Text(meta)

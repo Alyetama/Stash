@@ -22,6 +22,7 @@ struct SearchResult: Identifiable {
     let imgW: Int64
     let imgH: Int64
     let ext: String?        // image file extension for image rows (e.g. "png")
+    let title: String?      // fetched page title for bare-URL clips (opt-in)
     var id: Int64 { pk }
 
     var isImage: Bool { kind == "image" }
@@ -48,7 +49,7 @@ final class SidecarDB {
 
     static let schemaVersion = 2
     static let clipTextCap = 1_000_000   // self-captured clips stored in full up to this
-    static let cols = "e.pk, e.text, e.app, e.list, e.created, e.usecount, e.source, e.source_pk, e.favorite, e.kind, e.img_w, e.img_h, e.ext"
+    static let cols = "e.pk, e.text, e.app, e.list, e.created, e.usecount, e.source, e.source_pk, e.favorite, e.kind, e.img_w, e.img_h, e.ext, e.title"
 
     init() throws {
         try FileManager.default.createDirectory(
@@ -92,6 +93,7 @@ final class SidecarDB {
         try? db.exec("ALTER TABLE entries ADD COLUMN ext TEXT;")
         try? db.exec("ALTER TABLE entries ADD COLUMN hash INTEGER NOT NULL DEFAULT 0;")
         try? db.exec("CREATE INDEX IF NOT EXISTS entries_hash ON entries(hash);")
+        try? db.exec("ALTER TABLE entries ADD COLUMN title TEXT;")
     }
 
     private func createTables() throws {
@@ -110,7 +112,8 @@ final class SidecarDB {
                 img_w     INTEGER NOT NULL DEFAULT 0,
                 img_h     INTEGER NOT NULL DEFAULT 0,
                 ext       TEXT,
-                hash      INTEGER NOT NULL DEFAULT 0
+                hash      INTEGER NOT NULL DEFAULT 0,
+                title     TEXT
             );
             CREATE INDEX entries_created ON entries(created);
             CREATE INDEX entries_source_pk ON entries(source_pk);
@@ -215,6 +218,14 @@ final class SidecarDB {
         guard let s = try? db.prepare("UPDATE entries SET created = ?, usecount = usecount + 1 WHERE pk = ?") else { return }
         defer { s.finalize() }
         s.bind(1, date.timeIntervalSince1970); s.bind(2, pk); _ = try? s.step()
+    }
+
+    /// Store the fetched page title for a link clip.
+    func setTitle(pk: Int64, _ title: String?) {
+        guard let s = try? db.prepare("UPDATE entries SET title = ? WHERE pk = ?") else { return }
+        defer { s.finalize() }
+        if let t = title, !t.isEmpty { s.bind(1, t) } else { s.bindNull(1) }
+        s.bind(2, pk); _ = try? s.step()
     }
 
     /// Assign an entry to a named group (its `list`), or clear it with nil.
@@ -449,6 +460,7 @@ final class SearchEngine {
             pk: s.int(0), text: text, app: s.string(2), list: s.string(3),
             created: s.double(4), useCount: s.int(5), source: s.string(6),
             sourcePk: s.isNull(7) ? nil : s.int(7), favorite: s.int(8) != 0,
-            kind: s.string(9) ?? "text", imgW: s.int(10), imgH: s.int(11), ext: s.string(12))
+            kind: s.string(9) ?? "text", imgW: s.int(10), imgH: s.int(11), ext: s.string(12),
+            title: s.string(13))
     }
 }

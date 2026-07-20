@@ -47,6 +47,11 @@ struct SettingsView: View {
                          : "The search panel opens centered on screen (Spotlight-style).")
                         .font(.caption).foregroundStyle(.secondary)
                     Toggle("Keep duplicate clips", isOn: $indexer.keepDuplicates)
+                Toggle("Fetch page titles for links", isOn: $indexer.fetchLinkTitles)
+                Text(indexer.fetchLinkTitles
+                     ? "Copied links are requested to read their title — that sends the URL to the site."
+                     : "Off: nothing leaves your Mac. You can still fetch one title by right-clicking a link.")
+                    .font(.caption).foregroundStyle(.secondary)
                     Text(indexer.keepDuplicates
                          ? "Every copy is saved as a separate entry."
                          : "Re-copying something already saved moves it to the top instead of duplicating.")

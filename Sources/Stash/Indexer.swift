@@ -14,6 +14,9 @@ final class Indexer: ObservableObject {
     @Published private(set) var message: String = "Starting…"
     @Published var capturePaused: Bool { didSet { UserDefaults.standard.set(capturePaused, forKey: "capturePaused") } }
     @Published var keepDuplicates: Bool { didSet { UserDefaults.standard.set(keepDuplicates, forKey: "keepDuplicates") } }
+    /// Opt-in: fetch page titles for copied links. Off by default — fetching sends
+    /// the copied URL to that site, the one case where a clip leaves the machine.
+    @Published var fetchLinkTitles: Bool { didSet { UserDefaults.standard.set(fetchLinkTitles, forKey: "fetchLinkTitles") } }
 
     let sourcePath: String
 
@@ -26,6 +29,7 @@ final class Indexer: ObservableObject {
         self.sourcePath = sourcePath
         self.capturePaused = UserDefaults.standard.bool(forKey: "capturePaused")
         self.keepDuplicates = UserDefaults.standard.bool(forKey: "keepDuplicates")
+        self.fetchLinkTitles = UserDefaults.standard.bool(forKey: "fetchLinkTitles")
     }
 
     func start() {
@@ -125,8 +129,28 @@ final class Indexer: ObservableObject {
                 sc.bumpToTop(pk: pk)
                 return
             }
-            guard (try? sc.insertClip(text: capped, app: app, hash: hash)) != nil else { return }
+            guard let pk = try? sc.insertClip(text: capped, app: app, hash: hash) else { return }
             self.publish { self.indexedCount += 1 }
+            // Opt-in only: look up the page title for bare links.
+            if self.fetchLinkTitles, let url = LinkTitle.url(in: capped) {
+                LinkTitle.fetch(url) { [weak self] title in
+                    guard let self, let title else { return }
+                    self.queue.async { self.sidecar?.setTitle(pk: pk, title) }
+                }
+            }
+        }
+    }
+
+    /// Fetch a page title for one clip on demand (explicit user action, ignores the
+    /// opt-in setting). Calls back on the main thread with the title, if any.
+    func fetchTitle(pk: Int64, text: String, completion: @escaping (String?) -> Void) {
+        guard let url = LinkTitle.url(in: text) else { return completion(nil) }
+        LinkTitle.fetch(url) { [weak self] title in
+            guard let self else { return DispatchQueue.main.async { completion(nil) } }
+            self.queue.async {
+                if let title { self.sidecar?.setTitle(pk: pk, title) }
+                DispatchQueue.main.async { completion(title) }
+            }
         }
     }
 
