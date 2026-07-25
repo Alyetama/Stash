@@ -7,7 +7,9 @@ final class SearchController: ObservableObject {
     @Published var query = ""
     @Published var mode: SearchMode = .substring
     @Published private(set) var results: [SearchResult] = []
-    @Published var selected = 0
+    /// Index of the highlighted row, or -1 for "nothing highlighted". Results open
+    /// with no highlight; arrowing (or hovering/clicking) is what selects a row.
+    @Published var selected = -1
     @Published private(set) var status = ""
     @Published private(set) var searching = false
     @Published private(set) var hasMore = false
@@ -63,7 +65,7 @@ final class SearchController: ObservableObject {
     /// Cancels any in-flight search.
     func runSearch() {
         lock.lock(); generation += 1; let gen = generation; lock.unlock()
-        results = []; selected = 0; hasMore = false; loadingMore = false
+        results = []; selected = -1; hasMore = false; loadingMore = false
         searching = true
         loadPage(offset: 0, replace: true, gen: gen, start: Date())
     }
@@ -108,7 +110,7 @@ final class SearchController: ObservableObject {
             DispatchQueue.main.async {
                 guard self.isCurrent(gen) else { return }
                 self.lastWasRecent = recent
-                if replace { self.results = page; self.selected = 0; self.firstPageMS = ms }
+                if replace { self.results = page; self.selected = -1; self.firstPageMS = ms }
                 else { self.results.append(contentsOf: page) }
                 self.hasMore = page.count == SearchEngine.pageSize
                 self.searching = false
@@ -154,7 +156,7 @@ final class SearchController: ObservableObject {
         lock.lock(); generation += 1; lock.unlock()   // cancel any in-flight search
         query = ""
         results = []
-        selected = 0
+        selected = -1
         status = ""
         searching = false
         hasMore = false
@@ -247,7 +249,7 @@ final class SearchController: ObservableObject {
 
     func moveDown() {
         guard !results.isEmpty else { return }
-        selected = min(selected + 1, results.count - 1)
+        selected = selected < 0 ? 0 : min(selected + 1, results.count - 1)
         if selected >= results.count - 5 { loadMore() }   // prefetch as we near the end
     }
     func moveUp() { guard !results.isEmpty else { return }; selected = max(selected - 1, 0) }
@@ -256,8 +258,10 @@ final class SearchController: ObservableObject {
 
     /// Copy the selected entry's FULL text to the clipboard, then call `done`.
     func copySelected(done: @escaping () -> Void) {
-        guard results.indices.contains(selected) else { done(); return }
-        let r = results[selected]
+        // Return with nothing highlighted copies the top result (type-and-enter).
+        let idx = selected < 0 ? 0 : selected
+        guard results.indices.contains(idx) else { done(); return }
+        let r = results[idx]
 
         // Image clips: put the image back on the clipboard (transforms don't apply).
         if r.isImage {

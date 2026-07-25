@@ -49,6 +49,9 @@ struct SettingsView: View {
                     Toggle("Large image previews", isOn: $indexer.largeImages)
                 Text("Show copied images as a big preview instead of a small thumbnail.")
                     .font(.caption).foregroundStyle(.secondary)
+                Toggle("Show full link title on hover", isOn: $indexer.titleHoverPreview)
+                Text("Hovering a link's title pops up the whole title when it's cut off.")
+                    .font(.caption).foregroundStyle(.secondary)
                 Toggle("Keep duplicate clips", isOn: $indexer.keepDuplicates)
                 Toggle("Fetch page titles for links", isOn: $indexer.fetchLinkTitles)
                 Text(indexer.fetchLinkTitles

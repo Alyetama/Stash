@@ -91,7 +91,7 @@ final class PanelController: NSObject, NSWindowDelegate {
         builtCompact = compact
 
         if compact, let anchor = statusButtonRect?() {
-            let size = NSSize(width: 380, height: 520)
+            let size = NSSize(width: 390, height: 520)
             panel.setContentSize(size)
             let vis = (NSScreen.screens.first { $0.frame.contains(anchor.origin) } ?? NSScreen.main)?.visibleFrame ?? .zero
             var x = anchor.midX - size.width / 2

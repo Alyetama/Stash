@@ -19,6 +19,8 @@ final class Indexer: ObservableObject {
     @Published var fetchLinkTitles: Bool { didSet { UserDefaults.standard.set(fetchLinkTitles, forKey: "fetchLinkTitles") } }
     /// Show image clips as a large preview instead of a small thumbnail (opt-in).
     @Published var largeImages: Bool { didSet { UserDefaults.standard.set(largeImages, forKey: "largeImages") } }
+    /// Hovering a link's title chip pops up the full title (opt-in).
+    @Published var titleHoverPreview: Bool { didSet { UserDefaults.standard.set(titleHoverPreview, forKey: "titleHoverPreview") } }
 
     let sourcePath: String
 
@@ -33,6 +35,7 @@ final class Indexer: ObservableObject {
         self.keepDuplicates = UserDefaults.standard.bool(forKey: "keepDuplicates")
         self.fetchLinkTitles = UserDefaults.standard.bool(forKey: "fetchLinkTitles")
         self.largeImages = UserDefaults.standard.bool(forKey: "largeImages")
+        self.titleHoverPreview = UserDefaults.standard.bool(forKey: "titleHoverPreview")
     }
 
     func start() {

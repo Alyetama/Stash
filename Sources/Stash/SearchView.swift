@@ -21,6 +21,7 @@ struct SearchView: View {
     @State private var newGroupName = ""
     @State private var newGroupTarget: SearchResult?
     @State private var rowTextWidth: CGFloat = 0   // measured once for the whole list
+    @State private var titleHoverPk: Int64?        // row whose title tooltip is showing
 
     var body: some View {
         VStack(spacing: 0) {
@@ -321,8 +322,12 @@ struct SearchView: View {
             ScrollView {
                 LazyVStack(spacing: 1) {
                     ForEach(Array(controller.results.enumerated()), id: \.element.pk) { idx, r in
-                        ResultRow(result: r, selected: idx == controller.selected, textWidth: rowTextWidth, bigImages: indexer.largeImages)
+                        ResultRow(result: r, selected: idx == controller.selected,
+                                  textWidth: rowTextWidth, bigImages: indexer.largeImages,
+                                  showTitleHover: indexer.titleHoverPreview,
+                                  onTitleHover: { h in titleHoverPk = h ? r.pk : (titleHoverPk == r.pk ? nil : titleHoverPk) })
                             .id(r.pk)
+                            .zIndex(titleHoverPk == r.pk ? 10 : 0)
                             .contentShape(Rectangle())
                             .onTapGesture {
                                 // Single click copies to the clipboard and closes.
@@ -533,6 +538,10 @@ private struct ResultRow: View {
     let selected: Bool
     var textWidth: CGFloat = 0     // measured once at the list level, not per row
     var bigImages: Bool = false    // large preview for image clips (opt-in)
+    var showTitleHover: Bool = false   // hover a link title to see it in full (opt-in)
+    /// Reports title-chip hover so the list can lift this row above later ones —
+    /// otherwise the tooltip is painted over by the rows below it.
+    var onTitleHover: (Bool) -> Void = { _ in }
     @Environment(\.appTheme) private var theme
     @State private var hovering = false
     @State private var hoverTitle = false
@@ -664,6 +673,31 @@ private struct ResultRow: View {
             .shadow(color: selected ? theme.glow : .clear, radius: 6, y: 2)
             .padding(.horizontal, 8)
             .onHover { hovering = $0 }
+            // Drawn on the outermost row layer so nothing in the row paints over it.
+            .overlay(alignment: .topLeading) { titleTooltip }
+    }
+
+    @ViewBuilder private var titleTooltip: some View {
+        if showTitleHover, hoverTitle, let t = result.title, !t.isEmpty {
+            Text(t)
+                .font(.system(size: 12))
+                .foregroundStyle(.white)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: 300, alignment: .leading)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(Color(red: 0.09, green: 0.10, blue: 0.13))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.22), lineWidth: 0.5)
+                )
+                .shadow(color: .black.opacity(0.55), radius: 12, y: 4)
+                .offset(x: 52, y: 34)
+                .allowsHitTesting(false)
+        }
     }
 
     @ViewBuilder private var content: some View {
@@ -728,29 +762,9 @@ private struct ResultRow: View {
                     .padding(.bottom, 1)
                     // Hover reveals the full title. SwiftUI's .help() is unreliable
                     // inside the floating panel, so draw the tooltip ourselves.
-                    .onHover { hoverTitle = $0 }
-                    .overlay(alignment: .topLeading) {
-                        if hoverTitle {
-                            Text(t)
-                                .font(.system(size: 12))
-                                .foregroundStyle(Color.primary)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .frame(maxWidth: 320, alignment: .leading)
-                                .padding(.horizontal, 9)
-                                .padding(.vertical, 6)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        .fill(Color(nsColor: .controlBackgroundColor))
-                                )
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        .strokeBorder(Color.primary.opacity(0.15), lineWidth: 0.5)
-                                )
-                                .shadow(color: .black.opacity(0.4), radius: 9, y: 3)
-                                .offset(y: 24)
-                                .allowsHitTesting(false)
-                                .zIndex(20)
-                        }
+                    .onHover { h in
+                        guard showTitleHover else { return }
+                        hoverTitle = h; onTitleHover(h)
                     }
                 }
                 Text(styledPreview)
