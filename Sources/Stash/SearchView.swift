@@ -9,6 +9,7 @@ struct SearchView: View {
     @ObservedObject var theme: ThemeSettings
     @ObservedObject var groups: GroupSettings
     var onOpenSettings: () -> Void
+    var onManageGroups: () -> Void
     var onDeleteGroup: (String) -> Void
     var onHoldChange: (Bool) -> Void
     var onClose: () -> Void
@@ -194,7 +195,7 @@ struct SearchView: View {
                 Divider()
                 ForEach(groups.groups, id: \.self) { g in
                     Button { controller.scope = .group(g) } label: {
-                        Label(g, systemImage: isScope(.group(g)) ? "checkmark" : "tag")
+                        Label(g, systemImage: isScope(.group(g)) ? "checkmark" : groups.icon(for: g))
                     }
                 }
             }
@@ -202,14 +203,8 @@ struct SearchView: View {
             Button { newGroupTarget = nil; newGroupName = ""; showNewGroup = true } label: {
                 Label("New group…", systemImage: "plus")
             }
-            if !groups.groups.isEmpty {
-                Menu {
-                    ForEach(groups.groups, id: \.self) { g in
-                        Button(role: .destructive) { onDeleteGroup(g) } label: { Text(g) }
-                    }
-                } label: {
-                    Label("Delete group…", systemImage: "trash")
-                }
+            Button(action: onManageGroups) {
+                Label("Manage groups…", systemImage: "slider.horizontal.3")
             }
         } label: {
             Image(systemName: "line.3.horizontal.decrease.circle")
@@ -303,7 +298,7 @@ struct SearchView: View {
         Menu {
             ForEach(groups.groups, id: \.self) { g in
                 Button { controller.assignGroup(r, to: g) } label: {
-                    if r.list == g { Label(g, systemImage: "checkmark") } else { Text(g) }
+                    Label(g, systemImage: r.list == g ? "checkmark" : groups.icon(for: g))
                 }
             }
             if let l = r.list, !l.isEmpty {
@@ -540,6 +535,7 @@ private struct ResultRow: View {
     var bigImages: Bool = false    // large preview for image clips (opt-in)
     @Environment(\.appTheme) private var theme
     @State private var hovering = false
+    @State private var hoverTitle = false
     @State private var expanded = false
 
     /// True only when the 2-line-limited preview is actually truncated.
@@ -730,6 +726,32 @@ private struct ResultRow: View {
                                           lineWidth: 0.5)
                     )
                     .padding(.bottom, 1)
+                    // Hover reveals the full title. SwiftUI's .help() is unreliable
+                    // inside the floating panel, so draw the tooltip ourselves.
+                    .onHover { hoverTitle = $0 }
+                    .overlay(alignment: .topLeading) {
+                        if hoverTitle {
+                            Text(t)
+                                .font(.system(size: 12))
+                                .foregroundStyle(Color.primary)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: 320, alignment: .leading)
+                                .padding(.horizontal, 9)
+                                .padding(.vertical, 6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                        .fill(Color(nsColor: .controlBackgroundColor))
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                        .strokeBorder(Color.primary.opacity(0.15), lineWidth: 0.5)
+                                )
+                                .shadow(color: .black.opacity(0.4), radius: 9, y: 3)
+                                .offset(y: 24)
+                                .allowsHitTesting(false)
+                                .zIndex(20)
+                        }
+                    }
                 }
                 Text(styledPreview)
                     .lineLimit(expanded ? nil : 2)

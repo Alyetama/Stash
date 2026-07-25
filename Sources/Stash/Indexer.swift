@@ -357,6 +357,22 @@ final class Indexer: ObservableObject {
         }
     }
 
+    /// Move every clip in `old` to the group `new`.
+    func renameGroup(_ old: String, to new: String, completion: @escaping () -> Void = {}) {
+        queue.async { [weak self] in
+            self?.sidecar?.renameList(from: old, to: new)
+            DispatchQueue.main.async(execute: completion)
+        }
+    }
+
+    /// Clip count per group, for the group editor.
+    func fetchGroupCounts(completion: @escaping ([String: Int]) -> Void) {
+        queue.async { [weak self] in
+            let c = self?.sidecar?.listCounts() ?? [:]
+            DispatchQueue.main.async { completion(c) }
+        }
+    }
+
     /// Fetch the distinct group names currently in use (e.g. to surface imported lists).
     func fetchGroups(completion: @escaping ([String]) -> Void) {
         queue.async { [weak self] in

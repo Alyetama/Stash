@@ -268,6 +268,26 @@ final class SidecarDB {
         s.bind(1, name); _ = try? s.step()
     }
 
+    /// Move every clip in one group to another name.
+    func renameList(from old: String, to new: String) {
+        guard let s = try? db.prepare("UPDATE entries SET list = ? WHERE list = ?") else { return }
+        defer { s.finalize() }
+        s.bind(1, new); s.bind(2, old); _ = try? s.step()
+    }
+
+    /// Clip count per group name.
+    func listCounts() -> [String: Int] {
+        guard let s = try? db.prepare(
+            "SELECT list, COUNT(*) FROM entries WHERE list IS NOT NULL AND list <> '' GROUP BY list")
+        else { return [:] }
+        defer { s.finalize() }
+        var out: [String: Int] = [:]
+        while (try? s.step()) == true {
+            if let n = s.string(0) { out[n] = Int(s.int(1)) }
+        }
+        return out
+    }
+
     /// Distinct non-empty group names currently in use.
     func distinctLists() -> [String] {
         guard let s = try? db.prepare("SELECT DISTINCT list FROM entries WHERE list IS NOT NULL AND list <> '' ORDER BY list COLLATE NOCASE") else { return [] }

@@ -24,6 +24,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         indexer: indexer, ai: aiSettings, theme: themeSettings, hotkey: hotkeySettings,
         onExport: { [weak self] in self?.exportData() },
         onImport: { [weak self] in self?.importFromCEP() })
+    private lazy var groupsWindow = GroupsWindowController(
+        groups: controller.groups, indexer: indexer,
+        onChanged: { [weak self] in
+            self?.controller.refreshGroups()
+            self?.controller.runSearch()
+        })
     private let hotkeySettings = HotKeySettings()
     private var statusItem: NSStatusItem!
 
@@ -41,6 +47,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         panelController.onOpenSettings = { [weak self] in self?.settingsWindow.show() }
+        panelController.onManageGroups = { [weak self] in self?.groupsWindow.show() }
         panelController.onDeleteGroup = { [weak self] name in self?.confirmDeleteGroup(name) }
         panelController.statusButtonRect = { [weak self] in
             guard let button = self?.statusItem.button, let win = button.window else { return nil }
