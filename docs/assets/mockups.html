@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Stash mockup source</title>
+<!--
+  Source for docs/assets/mode-centered.png and mode-compact.png.
+  Regenerate with:  node docs/assets/make-mockups.js
+  Sample clips are invented on purpose — never paste a real clipboard history in here.
+  Every UI string below must match the app; the ones that are easy to get wrong:
+    placeholder   SearchPanel.swift   "Search your clipboard history…"
+    footer hint   SearchView.swift    "click or ↵ copies · ↑↓ navigate · esc close"
+    clip count    SearchView.swift    "\(count) clips total"
+  The ✨ AI button only exists on the Regex tab (SearchView.swift, aiButton), so it is
+  absent here while Substring is selected.
+-->
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font:14px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif;
+       -webkit-font-smoothing:antialiased}
+  .shot{width:1400px;height:942px;position:relative;overflow:hidden;
+        background:radial-gradient(120% 90% at 30% 20%,#5b4fe0 0%,#4a3fd0 45%,#3f2fbe 100%)}
+  /* fake menu bar */
+  .menubar{position:absolute;top:0;left:0;right:0;height:58px;background:#16161d;
+           display:flex;align-items:center;justify-content:flex-end;gap:22px;padding-right:24px;
+           color:#f2f2f7;font-size:19px}
+  .menubar .ico{opacity:.95;font-size:20px}
+  .menubar .ico.on{background:#3a3a45;border-radius:7px;padding:4px 7px}
+
+  .panel{position:absolute;background:#1b1e2e;border-radius:16px;
+         box-shadow:0 30px 70px rgba(0,0,0,.45);overflow:hidden;color:#e8eaf6}
+  .centered{width:940px;left:230px;top:188px}
+  .compact{width:560px;right:32px;top:82px}
+
+  .hdr{display:flex;align-items:center;gap:14px;padding:20px 24px;border-bottom:1px solid #262a41}
+  .compact .hdr{flex-direction:column;align-items:stretch;gap:12px;padding:16px 18px}
+  .compact .hrow{display:flex;align-items:center;gap:12px}
+  .mag{font-size:22px;color:#a3a8c8}
+  .ph{flex:1;color:#8f94b5;font-size:22px;white-space:nowrap}
+  .compact .ph{font-size:17px}
+
+  .modes{display:flex;background:#242840;border-radius:8px;padding:3px;gap:2px;flex-shrink:0}
+  .modes span{padding:5px 14px;border-radius:6px;font-size:14px;color:#a9aed0;white-space:nowrap}
+  .modes span.on{background:#3f8cff;color:#fff;font-weight:600}
+
+  .pin{display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.07);
+       border-radius:6px;padding:5px 11px;font-size:13px;font-weight:600;color:#a9aed0;flex-shrink:0}
+  .icons{display:flex;align-items:center;gap:16px;color:#a3a8c8;font-size:18px;flex-shrink:0}
+
+  .row{display:flex;gap:14px;align-items:flex-start;padding:14px 24px;border-bottom:1px solid #232744}
+  .compact .row{padding:11px 18px}
+  .row.sel{background:#2c3350}
+  .app{width:40px;height:40px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+       font-size:17px;font-weight:700;color:#fff;flex-shrink:0}
+  .compact .app{width:32px;height:32px;font-size:14px}
+  .safari{background:#3f8cff}.term{background:#2b2f45;color:#8fd3ff;font-size:14px}
+  .notes{background:#f2c14e;color:#3a2f00}.img{background:linear-gradient(135deg,#f58fb0,#f7c56b)}
+  .body{min-width:0;flex:1}
+  .ttl{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .compact .ttl{font-size:14px}
+  .lnk{display:inline-flex;align-items:center;gap:6px;background:#343b58;border-radius:6px;
+       padding:2px 9px;font-weight:600;font-size:15px}
+  .lnk.hi{background:#3f8cff;color:#fff}
+  .url{color:#c3c7e0;font-size:15px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .compact .url{font-size:13px}
+  .meta{color:#8b90b0;font-size:13px;margin-top:3px}
+  .compact .meta{font-size:12px}
+  .mono{font-family:"SF Mono",Menlo,monospace;font-size:15px}
+  .compact .mono{font-size:13px}
+
+  .ftr{display:flex;justify-content:space-between;padding:16px 24px;color:#8b90b0;font-size:14px}
+  .compact .ftr{padding:12px 18px;font-size:12px}
+</style>
+
+<div class="shot" id="centered">
+  <div class="menubar"><svg width="26" height="14" viewBox="0 0 26 14"><rect x="1" y="1" width="21" height="12" rx="3.5" stroke="#f2f2f7" stroke-width="1.6" fill="none" opacity=".65"/><rect x="3" y="3" width="14" height="8" rx="2" fill="#f2f2f7" opacity=".9"/><path d="M24 5v4a3 3 0 0 0 0-4z" fill="#f2f2f7" opacity=".5"/></svg><svg class="clip" width="17" height="20" viewBox="0 0 17 20"><rect x="1" y="3" width="15" height="16" rx="3" stroke="#f2f2f7" stroke-width="1.6" fill="none"/><rect x="5" y="1" width="7" height="4" rx="1.6" fill="#f2f2f7"/></svg><span>Tue 4:21 PM</span></div>
+  <div class="panel centered">
+    <div class="hdr">
+      <svg class="mag" width="24" height="24" viewBox="0 0 22 22" fill="none"><circle cx="9.5" cy="9.5" r="6.5" stroke="#a3a8c8" stroke-width="2"/><line x1="14.5" y1="14.5" x2="20" y2="20" stroke="#a3a8c8" stroke-width="2" stroke-linecap="round"/></svg>
+      <span class="ph">Search your clipboard history…</span>
+      <span class="modes"><span class="on">Substring</span><span>Words</span><span>Regex</span></span>
+      <span class="pin">★ Favorites</span>
+      <span class="icons"><span>☰</span><span>Aa</span><span>⚙</span></span>
+    </div>
+    <div class="row sel">
+      <span class="app safari">S</span>
+      <span class="body">
+        <span class="ttl"><span class="lnk">🌐 GitHub – Alyetama/Stash</span></span>
+        <div class="url">https://github.com/Alyetama/Stash</div>
+        <div class="meta">Safari · 2m ago</div>
+      </span>
+    </div>
+    <div class="row">
+      <span class="app term">&gt;_</span>
+      <span class="body"><div class="ttl mono">npm run build -- --release</div>
+        <div class="meta">iTerm · # snippets · 6m ago · 12×</div></span>
+    </div>
+    <div class="row">
+      <span class="app notes">N</span>
+      <span class="body"><div class="ttl">Design review moved to 3 PM — room 204</div>
+        <div class="meta">Notes · 1h ago</div></span>
+    </div>
+    <div class="row">
+      <span class="app safari">S</span>
+      <span class="body">
+        <span class="ttl"><span class="lnk hi">🌐 Rick Astley - Never Gonna Give You Up</span></span>
+        <div class="url">https://youtu.be/dQw4w9WgXcQ</div>
+        <div class="meta">Safari · 3h ago</div>
+      </span>
+    </div>
+    <div class="row">
+      <span class="app img"></span>
+      <span class="body"><div class="ttl">PNG · 1280×720</div>
+        <div class="meta">CleanShot · yesterday</div></span>
+    </div>
+    <div class="ftr"><span>12,431 clips total</span>
+      <span>click or ↵ copies · ↑↓ navigate · esc close</span></div>
+  </div>
+</div>
+
+<div class="shot" id="compact">
+  <div class="menubar"><svg width="26" height="14" viewBox="0 0 26 14"><rect x="1" y="1" width="21" height="12" rx="3.5" stroke="#f2f2f7" stroke-width="1.6" fill="none" opacity=".65"/><rect x="3" y="3" width="14" height="8" rx="2" fill="#f2f2f7" opacity=".9"/><path d="M24 5v4a3 3 0 0 0 0-4z" fill="#f2f2f7" opacity=".5"/></svg><span class="ico on"><svg width="17" height="20" viewBox="0 0 17 20"><rect x="1" y="3" width="15" height="16" rx="3" stroke="#f2f2f7" stroke-width="1.6" fill="none"/><rect x="5" y="1" width="7" height="4" rx="1.6" fill="#f2f2f7"/></svg></span><span>Tue 4:21 PM</span></div>
+  <div class="panel compact">
+    <div class="hdr">
+      <div class="hrow"><svg class="mag" width="24" height="24" viewBox="0 0 22 22" fill="none"><circle cx="9.5" cy="9.5" r="6.5" stroke="#a3a8c8" stroke-width="2"/><line x1="14.5" y1="14.5" x2="20" y2="20" stroke="#a3a8c8" stroke-width="2" stroke-linecap="round"/></svg><span class="ph">Search your clipboard history…</span>
+        <span class="icons"><span>⚙</span></span></div>
+      <div class="hrow">
+        <span class="modes"><span class="on">Substring</span><span>Words</span><span>Regex</span></span>
+        <span class="pin">★ Favorites</span>
+        <span class="icons"><span>☰</span><span>Aa</span></span>
+      </div>
+    </div>
+    <div class="row sel">
+      <span class="app safari">S</span>
+      <span class="body">
+        <span class="ttl"><span class="lnk">🌐 GitHub – Alyetama/Stash</span></span>
+        <div class="url">https://github.com/Alyetama/Stash</div>
+        <div class="meta">Safari · 2m ago</div>
+      </span>
+    </div>
+    <div class="row">
+      <span class="app term">&gt;_</span>
+      <span class="body"><div class="ttl mono">npm run build -- --release</div>
+        <div class="meta">iTerm · # snippets · 6m ago · 12×</div></span>
+    </div>
+    <div class="row">
+      <span class="app notes">N</span>
+      <span class="body"><div class="ttl">Design review moved to 3 PM — room 204</div>
+        <div class="meta">Notes · 1h ago</div></span>
+    </div>
+    <div class="row">
+      <span class="app safari">S</span>
+      <span class="body">
+        <span class="ttl"><span class="lnk hi">🌐 Rick Astley - Never Gonna Give You Up</span></span>
+        <div class="url">https://youtu.be/dQw4w9WgXcQ</div>
+        <div class="meta">Safari · 3h ago</div>
+      </span>
+    </div>
+    <div class="row">
+      <span class="app img"></span>
+      <span class="body"><div class="ttl">PNG · 1280×720</div>
+        <div class="meta">CleanShot · yesterday</div></span>
+    </div>
+    <div class="ftr"><span>12,431 clips total</span>
+      <span>click or ↵ copies · ↑↓ navigate · esc close</span></div>
+  </div>
+</div>

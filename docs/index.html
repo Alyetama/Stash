@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Stash — a fast clipboard manager for macOS</title>
-<meta name="description" content="Stash records everything you copy and searches your entire clipboard history in milliseconds, even past a million entries. Native macOS menu-bar app.">
+<meta name="description" content="Stash records everything you copy and searches your entire clipboard history from the menu bar. Native macOS app, SQLite FTS5-backed, 100% local.">
 <link rel="icon" href="assets/icon.png">
 <meta property="og:title" content="Stash — fast clipboard search for macOS">
-<meta property="og:description" content="Find any clip you've ever copied in milliseconds. Native menu-bar app, FTS5-powered, scales to millions of entries.">
+<meta property="og:description" content="Find any clip you've ever copied. Native menu-bar app, FTS5-powered, 100% local.">
 <meta property="og:image" content="assets/icon.png">
 <style>
   :root{
@@ -153,15 +153,15 @@
   <div class="wrap">
     <svg class="appicon" aria-label="Stash icon"><use href="#appicon"/></svg>
     <h1>Stash</h1>
-    <p class="tag">Find <b>anything you've ever copied</b> in milliseconds. A native macOS menu-bar clipboard manager that stays fast even past <b>millions</b> of entries. Works on its own; no other app required.</p>
+    <p class="tag">Find <b>anything you've ever copied</b>. A native macOS menu-bar clipboard manager that indexes your history with SQLite FTS5, so search stays fast as it grows. Works on its own; no other app required.</p>
     <div class="cta">
       <a class="btn btn-primary" id="dl" href="https://github.com/Alyetama/Stash/releases/latest/download/Stash.dmg" onclick="showInstall()">⤓ Download for macOS</a>
       <a class="btn btn-ghost" href="https://github.com/Alyetama/Stash" target="_blank" rel="noopener">View source</a>
     </div>
-    <p class="sub">macOS 13+ · Apple Silicon &amp; Intel · 100% local · summon anywhere with <span class="kbd">⌃⌥C</span></p>
+    <p class="sub">macOS 13+ · Apple Silicon · 100% local · summon anywhere with <span class="kbd">⌃⌥C</span></p>
 
     <div class="demo">
-      <p class="hint">↓ <b>Try it</b> — switch <b>Substring / Words / Regex</b> to see how each matches. In <b>Regex</b>, tap <b>✨</b> to generate a pattern from plain English. Click a result to copy it.</p>
+      <p class="hint">↓ <b>Try it</b> — switch <b>Substring / Words / Regex</b> to see how each matches. In <b>Regex</b>, tap <b>✨</b> for the pattern generator. Click a result to copy it. <i>This demo runs entirely in your browser on sample clips; its ✨ returns canned patterns, while the app sends your description to OpenCode.</i></p>
       <div class="panel">
         <div class="search">
           <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="9.5" cy="9.5" r="6.5" stroke="#a3a8c8" stroke-width="2"/><line x1="14.5" y1="14.5" x2="20" y2="20" stroke="#a3a8c8" stroke-width="2" stroke-linecap="round"/></svg>
@@ -193,6 +193,7 @@
     <div class="modeshow">
       <img src="assets/mode-centered.png" alt="Stash centered, Spotlight-style">
       <img class="top" src="assets/mode-compact.png" alt="Stash compact, under the menu bar">
+      <p class="lead" style="font-size:.85rem;opacity:.7;margin-top:14px">Both images show sample clips, not a real history.</p>
     </div>
   </div>
 </section>
@@ -200,8 +201,8 @@
 <section>
   <div class="wrap">
     <div class="stats">
-      <div class="stat"><div class="n">&lt; 10 ms</div><div class="l">typical search latency</div></div>
-      <div class="stat"><div class="n">1M+</div><div class="l">entries, still instant</div></div>
+      <div class="stat"><div class="n">FTS5</div><div class="l">trigram + bm25 indexes</div></div>
+      <div class="stat"><div class="n">0</div><div class="l">accounts, trackers, cloud sync</div></div>
       <div class="stat"><div class="n">100%</div><div class="l">local-first · no telemetry</div></div>
     </div>
   </div>
@@ -213,14 +214,15 @@
     <p class="lead">Stash records your clipboard in the background and indexes it with SQLite FTS5, so search stays fast no matter how much history piles up.</p>
     <div class="grid">
       <div class="feat"><div class="ico">📋</div><h3>Live capture</h3><p>Every text clip is saved automatically, tagged with the source app and time. Each entry shows the app's real icon.</p></div>
-      <div class="feat"><div class="ico">⚡</div><h3>Three search modes</h3><p>Substring "contains", relevance-ranked word search, and full regular expressions. Switch modes anytime.</p></div>
+      <div class="feat"><div class="ico">⚡</div><h3>Three search modes</h3><p>Substring "contains" (FTS5 trigram), relevance-ranked word search (bm25), and full regular expressions. Switch modes anytime.</p></div>
       <div class="feat"><div class="ico">🖼️</div><h3>Images and GIFs</h3><p>Copied images are captured as thumbnails; GIFs show a still first frame. PNG, JPEG, WebP, AVIF, HEIC and more, each labeled by format.</p></div>
       <div class="feat"><div class="ico">🔁</div><h3>Smart duplicates</h3><p>Re-copying something already saved moves it to the top instead of duplicating. Or keep every copy, if you prefer.</p></div>
       <div class="feat"><div class="ico">🖱️</div><h3>One-click copy</h3><p>Click a result or press Return to copy it and close. Paste with ⌘V anywhere.</p></div>
       <div class="feat"><div class="ico">⌨️</div><h3>Customizable hotkey</h3><p>Summon the search bar from any app. Default is ⌃⌥C, and you can record your own.</p></div>
       <div class="feat"><div class="ico">✨</div><h3>AI regex (opt-in)</h3><p>Add an OpenCode API key and describe a pattern in plain English — a free model writes the regex and runs the search.</p></div>
       <div class="feat"><div class="ico">🔤</div><h3>Copy transformations</h3><p>Upper/lower/capitalize, trim or strip whitespace, single-line, or prepend/append text — applied as you copy.</p></div>
-      <div class="feat"><div class="ico">⭐</div><h3>Favorites and groups</h3><p>Star clips, or sort them into your own named groups, then filter the view to favorites or any group.</p></div>
+      <div class="feat"><div class="ico">⭐</div><h3>Favorites and groups</h3><p>Star clips, or sort them into your own named groups, then filter the view to favorites or any group. Rename and delete groups in the groups editor.</p></div>
+      <div class="feat"><div class="ico">📌</div><h3>Pinned quick filter</h3><p>A one-click tab beside the search modes jumps straight to your favorites. Right-click it to point it at any group instead.</p></div>
       <div class="feat"><div class="ico">🪟</div><h3>Compact or centered</h3><p>Open as a centered Spotlight-style window, or a compact dropdown anchored under the menu-bar icon.</p></div>
       <div class="feat"><div class="ico">🎨</div><h3>Themes</h3><p>Six dark themes in Settings — pick whichever fits your setup.</p></div>
       <div class="feat"><div class="ico">💾</div><h3>Export and import</h3><p>Save your whole history to a standalone SQLite database, or import once from a Copy 'Em export, strictly read-only.</p></div>
@@ -259,7 +261,7 @@
 <div class="modal" id="install" onclick="if(event.target===this)hideInstall()">
   <div class="card">
     <h3>Opening Stash the first time</h3>
-    <p class="why">Stash is open-source and ad-hoc signed (no paid Apple Developer ID), so macOS blocks it on first launch. Here's the one-time fix:</p>
+    <p class="why">Stash is open-source and signed with a self-signed certificate rather than a paid Apple Developer ID, so it isn't notarized and macOS blocks it on first launch. Here's the one-time fix:</p>
     <ol>
       <li>Open the downloaded <b>Stash.dmg</b> and drag <b>Stash</b> into <b>Applications</b>.</li>
       <li>Open <b>Stash</b> from Applications. macOS will say it "can't be opened" — that's expected.</li>
