@@ -229,10 +229,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.message = "Export your clipboard history to a standalone SQLite database."
         panel.canCreateDirectories = true
 
-        let check = NSButton(checkboxWithTitle: "Compress to a .zip archive",
+        let format = ExportFormat.preferred
+        let check = NSButton(checkboxWithTitle: "Compress to a .\(format.fileExtension) archive",
                              target: self, action: #selector(toggleCompressExport(_:)))
         check.state = compressExport ? .on : .off
         check.toolTip = "A clip database is mostly text, so the archive is much smaller."
+                      + " Change the format in Settings."
         check.frame = NSRect(x: 14, y: 6, width: 300, height: 20)
         let box = NSView(frame: NSRect(x: 0, y: 0, width: 330, height: 32))
         box.addSubview(check)
@@ -246,7 +248,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
         panel.begin { [weak self] response in
             guard response == .OK, let url = panel.url, let self else { return }
-            self.indexer.export(to: url, compressed: self.compressExport) { result in
+            self.indexer.export(to: url, compressWith: self.compressExport ? ExportFormat.preferred : nil) { result in
                 let alert = NSAlert()
                 switch result {
                 case .success(let n):
@@ -275,13 +277,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// preserving whatever base name the user has typed.
     private func applyExportNaming() {
         guard let panel = exportPanel else { return }
+        let format = ExportFormat.preferred
         var base = panel.nameFieldStringValue
-        if base.lowercased().hasSuffix(".zip") { base = String(base.dropLast(4)) }
+        // Strip whichever archive suffix is on there, then ".sqlite", so toggling
+        // never stacks extensions.
+        for ext in ExportFormat.allCases.map(\.fileExtension) where base.lowercased().hasSuffix("." + ext) {
+            base = String(base.dropLast(ext.count + 1))
+            break
+        }
         if base.lowercased().hasSuffix(".sqlite") { base = String(base.dropLast(7)) }
         panel.allowedContentTypes = compressExport
-            ? [.zip]
+            ? [UTType(filenameExtension: format.fileExtension) ?? .data]
             : [UTType(filenameExtension: "sqlite") ?? .database]
-        panel.nameFieldStringValue = base + (compressExport ? ".sqlite.zip" : ".sqlite")
+        panel.nameFieldStringValue = base + ".sqlite" + (compressExport ? "." + format.fileExtension : "")
     }
 
     func showPanel() { panelController.show() }

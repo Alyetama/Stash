@@ -20,11 +20,26 @@ struct SettingsView: View {
     var onImport: () -> Void
 
     @AppStorage("compactPanel") private var compactPanel = false
+    @AppStorage("exportFormat") private var exportFormat = ExportFormat.fallback.rawValue
     @State private var launchAtLogin = LoginItem.enabled
     @State private var keyInput = ""
     @State private var editingKey = false
     @State private var showKey = false
     @State private var confirmClear = false
+
+    private var selectedFormat: ExportFormat {
+        ExportFormat(rawValue: exportFormat) ?? .fallback
+    }
+
+    /// Explains what the picker affects, or how to get the missing tool.
+    private var compressionNote: String {
+        let f = selectedFormat
+        if !f.isAvailable {
+            let hint = f.installHint.map { " Install it with “\($0)”" } ?? ""
+            return "\(f.label) isn't installed, so exports can't use it yet.\(hint), or pick another format."
+        }
+        return "Used when you tick “Compress” while exporting. 7-Zip and xz pack smallest; Zstandard is the fastest."
+    }
 
     private var version: String {
         (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "1.0"
@@ -121,6 +136,16 @@ struct SettingsView: View {
                         Button("Import from Copy 'Em…", action: onImport)
                         Spacer()
                     }
+                    Picker("Compression", selection: $exportFormat) {
+                        ForEach(ExportFormat.allCases) { f in
+                            Text(f.isAvailable ? f.menuLabel : "\(f.menuLabel) — not installed")
+                                .tag(f.rawValue)
+                        }
+                    }
+                    Text(compressionNote)
+                        .font(.caption)
+                        .foregroundStyle(selectedFormat.isAvailable ? AnyShapeStyle(.secondary)
+                                                                    : AnyShapeStyle(.orange))
                     Text("Stored at ~/Library/Application Support/Stash")
                         .font(.caption).foregroundStyle(.secondary)
                 }

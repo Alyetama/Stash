@@ -418,10 +418,11 @@ final class Indexer: ObservableObject {
     // MARK: - export
 
     /// Export the whole clipboard history to a standalone SQLite database at `url`
-    /// (a clean `clips` table — no FTS internals). With `compressed`, the database is
-    /// built in a temporary folder and zipped into `url` instead — a clip database is
-    /// mostly text, so the archive is a fraction of the size. Calls back on main.
-    func export(to url: URL, compressed: Bool = false,
+    /// (a clean `clips` table — no FTS internals). Pass a `format` to build the
+    /// database in a temporary folder and compress it into `url` instead — a clip
+    /// database is mostly text, so the archive is a fraction of the size. Calls back
+    /// on the main thread.
+    func export(to url: URL, compressWith format: ExportFormat? = nil,
                 completion: @escaping (Result<Int, Error>) -> Void) {
         queue.async { [weak self] in
             func done(_ r: Result<Int, Error>) { DispatchQueue.main.async { completion(r) } }
@@ -435,7 +436,7 @@ final class Indexer: ObservableObject {
             // folder whose contents get archived into the destination.
             var scratch: URL?
             let dbURL: URL
-            if compressed {
+            if format != nil {
                 var inner = url.deletingPathExtension().lastPathComponent
                 if !inner.lowercased().hasSuffix(".sqlite") { inner += ".sqlite" }
                 let dir = FileManager.default.temporaryDirectory
@@ -479,7 +480,7 @@ final class Indexer: ObservableObject {
                     try? sc.db.exec("DETACH DATABASE exp;")
                     throw error
                 }
-                if compressed { try Self.zip(dbURL, to: url) }
+                if let format { try Self.compress(dbURL, to: url, using: format) }
                 done(.success(n))
             } catch {
                 done(.failure(error))
@@ -487,15 +488,36 @@ final class Indexer: ObservableObject {
         }
     }
 
-    /// Archive a single file into a .zip, using ditto (always present on macOS, and
-    /// it writes an ordinary archive Finder opens with a double-click).
-    private static func zip(_ file: URL, to dest: URL) throws {
+    /// Compress a single file into `dest` with the chosen tool.
+    private static func compress(_ file: URL, to dest: URL, using format: ExportFormat) throws {
+        guard let tool = format.toolURL else {
+            let hint = format.installHint.map { " Install it with: \($0)." } ?? ""
+            throw NSError(domain: "Stash", code: 3, userInfo: [NSLocalizedDescriptionKey:
+                "\(format.label) isn't installed on this Mac.\(hint) You can also choose a different format in Settings."])
+        }
         try? FileManager.default.removeItem(at: dest)
+
+        let invocation = format.invocation(input: file, output: dest)
         let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
-        p.arguments = ["-c", "-k", "--sequesterRsrc", file.path, dest.path]
+        p.executableURL = tool
+        p.arguments = invocation.args
         let err = Pipe()
         p.standardError = err
+
+        // gzip/xz/bzip2 only write to stdout, so the destination is opened here and
+        // handed to the process; the others are given the path in their arguments.
+        var sink: FileHandle?
+        if invocation.writesStdout {
+            guard FileManager.default.createFile(atPath: dest.path, contents: nil),
+                  let handle = FileHandle(forWritingAtPath: dest.path) else {
+                throw NSError(domain: "Stash", code: 4, userInfo: [NSLocalizedDescriptionKey:
+                    "Couldn't create \(dest.lastPathComponent)."])
+            }
+            sink = handle
+            p.standardOutput = handle
+        }
+        defer { try? sink?.close() }
+
         try p.run()
         // Drain before waiting so a chatty failure can't fill the pipe and block.
         let msg = String(data: err.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
@@ -503,7 +525,7 @@ final class Indexer: ObservableObject {
         guard p.terminationStatus == 0 else {
             let detail = msg.trimmingCharacters(in: .whitespacesAndNewlines)
             throw NSError(domain: "Stash", code: 2, userInfo: [NSLocalizedDescriptionKey:
-                "Couldn't compress the export." + (detail.isEmpty ? "" : " \(detail)")])
+                "Couldn't compress the export with \(format.label)." + (detail.isEmpty ? "" : " \(detail)")])
         }
     }
 
