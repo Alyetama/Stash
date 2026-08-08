@@ -38,6 +38,7 @@ struct SearchView: View {
         .onChange(of: controller.query) { _ in controller.runSearch() }
         .onChange(of: controller.mode) { _ in controller.runSearch() }
         .onChange(of: controller.scope) { _ in controller.runSearch() }
+        .onChange(of: controller.typeFilter) { _ in controller.runSearch() }
         // Keep the panel open while the AI popover (and its Keychain prompt) is up.
         .onChange(of: showAI) { onHoldChange($0) }
         // Likewise while the new-group prompt is up, so the panel doesn't dismiss.
@@ -201,6 +202,18 @@ struct SearchView: View {
                 }
             }
             Divider()
+            // Content type — an independent axis, so it combines with the scope above.
+            Menu {
+                ForEach(ContentType.allCases) { t in
+                    Button { controller.typeFilter = t } label: {
+                        Label(t.label, systemImage: controller.typeFilter == t ? "checkmark" : t.icon)
+                    }
+                }
+            } label: {
+                Label(controller.typeFilter == .all ? "Type" : "Type: \(controller.typeFilter.label)",
+                      systemImage: controller.typeFilter.icon)
+            }
+            Divider()
             Button { newGroupTarget = nil; newGroupName = ""; showNewGroup = true } label: {
                 Label("New group…", systemImage: "plus")
             }
@@ -209,12 +222,13 @@ struct SearchView: View {
             }
         } label: {
             Image(systemName: "line.3.horizontal.decrease.circle")
-                .foregroundStyle(isScope(.all) ? AnyShapeStyle(.secondary) : AnyShapeStyle(theme.theme.accent))
+                .foregroundStyle(isScope(.all) && controller.typeFilter == .all
+                                 ? AnyShapeStyle(.secondary) : AnyShapeStyle(theme.theme.accent))
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .fixedSize()
-        .help("Filter by favorites or a group")
+        .help("Filter by favorites, a group, or content type")
     }
 
     private var transformsButton: some View {
@@ -288,9 +302,12 @@ struct SearchView: View {
         } else if controller.searching {
             messageView("Loading…", systemImage: "hourglass")
         } else if controller.query.isEmpty {
-            messageView("No clipboard entries yet", systemImage: "tray")
+            // The status line already words the empty case for whatever filters are
+            // active ("No images yet", "“Work” is empty"), so reuse it here.
+            messageView(controller.status.isEmpty ? "No clipboard entries yet" : controller.status,
+                        systemImage: controller.typeFilter == .all ? "tray" : controller.typeFilter.icon)
         } else {
-            messageView("No matches", systemImage: "tray")
+            messageView(controller.status.isEmpty ? "No matches" : controller.status, systemImage: "tray")
         }
     }
 

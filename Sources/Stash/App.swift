@@ -218,24 +218,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return p + "/Copy-em-Paste.storedata"
     }
 
+    /// Remembered between exports.
+    private var compressExport = UserDefaults.standard.bool(forKey: "compressExport")
+    private weak var exportPanel: NSSavePanel?
+
     @objc private func exportData() {
         let panel = NSSavePanel()
+        exportPanel = panel
         panel.title = "Export clipboard history"
         panel.message = "Export your clipboard history to a standalone SQLite database."
-        panel.allowedContentTypes = [UTType(filenameExtension: "sqlite") ?? .database]
         panel.canCreateDirectories = true
+
+        let check = NSButton(checkboxWithTitle: "Compress to a .zip archive",
+                             target: self, action: #selector(toggleCompressExport(_:)))
+        check.state = compressExport ? .on : .off
+        check.toolTip = "A clip database is mostly text, so the archive is much smaller."
+        check.frame = NSRect(x: 14, y: 6, width: 300, height: 20)
+        let box = NSView(frame: NSRect(x: 0, y: 0, width: 330, height: 32))
+        box.addSubview(check)
+        panel.accessoryView = box
+
         let stamp = DateFormatter()
         stamp.dateFormat = "yyyy-MM-dd"
-        panel.nameFieldStringValue = "Stash Export \(stamp.string(from: Date())).sqlite"
+        panel.nameFieldStringValue = "Stash Export \(stamp.string(from: Date()))"
+        applyExportNaming()
 
         NSApp.activate(ignoringOtherApps: true)
         panel.begin { [weak self] response in
-            guard response == .OK, let url = panel.url else { return }
-            self?.indexer.export(to: url) { result in
+            guard response == .OK, let url = panel.url, let self else { return }
+            self.indexer.export(to: url, compressed: self.compressExport) { result in
                 let alert = NSAlert()
                 switch result {
                 case .success(let n):
-                    alert.messageText = "Exported \(n.formatted()) clips"
+                    let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64) ?? nil
+                    let sizeText = size.map { " · " + ByteCountFormatter.string(fromByteCount: $0, countStyle: .file) } ?? ""
+                    alert.messageText = "Exported \(n.formatted()) clips\(sizeText)"
                     alert.informativeText = url.path
                 case .failure(let error):
                     alert.alertStyle = .warning
@@ -246,6 +263,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 alert.runModal()
             }
         }
+    }
+
+    @objc private func toggleCompressExport(_ sender: NSButton) {
+        compressExport = sender.state == .on
+        UserDefaults.standard.set(compressExport, forKey: "compressExport")
+        applyExportNaming()
+    }
+
+    /// Keep the save panel's file type and extension in step with the checkbox,
+    /// preserving whatever base name the user has typed.
+    private func applyExportNaming() {
+        guard let panel = exportPanel else { return }
+        var base = panel.nameFieldStringValue
+        if base.lowercased().hasSuffix(".zip") { base = String(base.dropLast(4)) }
+        if base.lowercased().hasSuffix(".sqlite") { base = String(base.dropLast(7)) }
+        panel.allowedContentTypes = compressExport
+            ? [.zip]
+            : [UTType(filenameExtension: "sqlite") ?? .database]
+        panel.nameFieldStringValue = base + (compressExport ? ".sqlite.zip" : ".sqlite")
     }
 
     func showPanel() { panelController.show() }

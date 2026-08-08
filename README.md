@@ -42,6 +42,7 @@ Press <kbd>⌃</kbd><kbd>⌥</kbd><kbd>C</kbd> (or click the menu-bar icon) to o
 - **Instant search** over your whole history — substring, whole-word, or regex, indexed with SQLite FTS5 so it stays fast as history grows.
 - **Captures everything** — text, images, and GIFs (PNG, JPEG, WebP, AVIF, HEIC, and more), tagged with the app they came from.
 - **Groups & favorites** — sort clips into named groups, star the ones you reuse, filter to either. A pinned tab beside the search modes jumps to your favorites in one click, or right-click it to point it at a group.
+- **Filter by type** — narrow the list to images, links, files, or plain text. Combines with favorites and groups, so "images in a group" works.
 - **Smart duplicates** — re-copying something moves it to the top instead of piling up a second copy (or keep every copy, your call).
 - **Copy transformations** — change case, trim, single-line, prepend/append, applied as you copy.
 - **AI regex** *(optional)* — describe a pattern in plain English, a free model writes the regex. Off until you add a key, which lives in your Keychain.

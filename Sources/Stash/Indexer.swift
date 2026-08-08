@@ -54,10 +54,40 @@ final class Indexer: ObservableObject {
                 self.message = "Ready"
             }
             backfillHashesIfNeeded(sc)
+            backfillContentTypesIfNeeded(sc)
         } catch {
             fail(error)
         }
         startMonitor()
+    }
+
+    /// Classify entries that have no content type yet, so the type filter covers
+    /// existing history and not just new clips.
+    ///
+    /// Runs every launch rather than once behind a flag: an older build of Stash
+    /// writing to the same database inserts rows without a `ctype`, and those would
+    /// otherwise stay NULL forever and never match a type filter. The lookup is
+    /// indexed, so it costs nothing when there is nothing to classify.
+    private func backfillContentTypesIfNeeded(_ sc: SidecarDB) {
+        var updates: [(Int64, String)] = []
+        if let s = try? sc.db.prepare("SELECT pk, text, kind FROM entries WHERE ctype IS NULL") {
+            while (try? s.step()) == true {
+                let t = s.string(2) == "image"
+                    ? ContentType.image.rawValue
+                    : ContentType.classify(text: s.string(1) ?? "", isFile: false)
+                updates.append((s.int(0), t))
+            }
+            s.finalize()
+        }
+        guard !updates.isEmpty,
+              let upd = try? sc.db.prepare("UPDATE entries SET ctype = ? WHERE pk = ?") else { return }
+        try? sc.begin()
+        for (i, u) in updates.enumerated() {
+            upd.reset(); upd.bind(1, u.1); upd.bind(2, u.0); _ = try? upd.step()
+            if i % 5000 == 4999 { try? sc.commit(); try? sc.begin() }
+        }
+        try? sc.commit()
+        upd.finalize()
     }
 
     /// One-time: populate the content `hash` column for entries created before the
@@ -105,7 +135,7 @@ final class Indexer: ObservableObject {
         DispatchQueue.main.async { [weak self] in
             guard let self, self.monitor == nil else { return }
             let m = ClipboardMonitor(
-                onText: { [weak self] text, app in self?.recordClip(text: text, app: app) },
+                onText: { [weak self] text, app, isFile in self?.recordClip(text: text, app: app, isFile: isFile) },
                 onImage: { [weak self] data, ext, app in self?.recordImage(data: data, ext: ext, app: app) })
             m.start()
             self.monitor = m
@@ -124,7 +154,7 @@ final class Indexer: ObservableObject {
         }
     }
 
-    private func recordClip(text: String, app: String?) {
+    private func recordClip(text: String, app: String?, isFile: Bool = false) {
         queue.async { [weak self] in
             guard let self, let sc = self.sidecar, !self.capturePaused else { return }
             let capped = text.count > SidecarDB.clipTextCap ? String(text.prefix(SidecarDB.clipTextCap)) : text
@@ -135,7 +165,8 @@ final class Indexer: ObservableObject {
                 sc.bumpToTop(pk: pk)
                 return
             }
-            guard let pk = try? sc.insertClip(text: capped, app: app, hash: hash) else { return }
+            let ctype = ContentType.classify(text: capped, isFile: isFile)
+            guard let pk = try? sc.insertClip(text: capped, app: app, hash: hash, ctype: ctype) else { return }
             self.publish { self.indexedCount += 1 }
             // Opt-in only: look up the page title for bare links.
             if self.fetchLinkTitles, let url = LinkTitle.url(in: capped) {
@@ -387,8 +418,11 @@ final class Indexer: ObservableObject {
     // MARK: - export
 
     /// Export the whole clipboard history to a standalone SQLite database at `url`
-    /// (a clean `clips` table — no FTS internals). Calls back on the main thread.
-    func export(to url: URL, completion: @escaping (Result<Int, Error>) -> Void) {
+    /// (a clean `clips` table — no FTS internals). With `compressed`, the database is
+    /// built in a temporary folder and zipped into `url` instead — a clip database is
+    /// mostly text, so the archive is a fraction of the size. Calls back on main.
+    func export(to url: URL, compressed: Bool = false,
+                completion: @escaping (Result<Int, Error>) -> Void) {
         queue.async { [weak self] in
             func done(_ r: Result<Int, Error>) { DispatchQueue.main.async { completion(r) } }
             guard let self, let sc = self.sidecar else {
@@ -396,10 +430,31 @@ final class Indexer: ObservableObject {
                     userInfo: [NSLocalizedDescriptionKey: "History isn't ready yet."])))
                 return
             }
+
+            // Where the .sqlite itself is written: the destination, or a scratch
+            // folder whose contents get archived into the destination.
+            var scratch: URL?
+            let dbURL: URL
+            if compressed {
+                var inner = url.deletingPathExtension().lastPathComponent
+                if !inner.lowercased().hasSuffix(".sqlite") { inner += ".sqlite" }
+                let dir = FileManager.default.temporaryDirectory
+                    .appendingPathComponent("stash-export-" + UUID().uuidString)
+                scratch = dir
+                dbURL = dir.appendingPathComponent(inner)
+            } else {
+                dbURL = url
+            }
+            defer { if let scratch { try? FileManager.default.removeItem(at: scratch) } }
+
             do {
-                try? FileManager.default.removeItem(at: url)
-                let escaped = url.path.replacingOccurrences(of: "'", with: "''")
+                if let scratch {
+                    try FileManager.default.createDirectory(at: scratch, withIntermediateDirectories: true)
+                }
+                try? FileManager.default.removeItem(at: dbURL)
+                let escaped = dbURL.path.replacingOccurrences(of: "'", with: "''")
                 try sc.db.exec("ATTACH DATABASE '\(escaped)' AS exp;")
+                let n: Int
                 do {
                     try sc.db.exec("""
                         CREATE TABLE exp.clips(
@@ -407,26 +462,48 @@ final class Indexer: ObservableObject {
                             text         TEXT,
                             app          TEXT,
                             list         TEXT,
+                            type         TEXT,
                             created_unix REAL,
                             created_iso  TEXT,
                             usecount     INTEGER,
                             source       TEXT
                         );
-                        INSERT INTO exp.clips(id, text, app, list, created_unix, created_iso, usecount, source)
-                        SELECT pk, text, app, list, created,
+                        INSERT INTO exp.clips(id, text, app, list, type, created_unix, created_iso, usecount, source)
+                        SELECT pk, text, app, list, ctype, created,
                                datetime(created, 'unixepoch'), usecount, source
                         FROM entries ORDER BY created;
                     """)
-                    let n = Int(try sc.db.scalarInt("SELECT COUNT(*) FROM exp.clips") ?? 0)
+                    n = Int(try sc.db.scalarInt("SELECT COUNT(*) FROM exp.clips") ?? 0)
                     try sc.db.exec("DETACH DATABASE exp;")
-                    done(.success(n))
                 } catch {
                     try? sc.db.exec("DETACH DATABASE exp;")
                     throw error
                 }
+                if compressed { try Self.zip(dbURL, to: url) }
+                done(.success(n))
             } catch {
                 done(.failure(error))
             }
+        }
+    }
+
+    /// Archive a single file into a .zip, using ditto (always present on macOS, and
+    /// it writes an ordinary archive Finder opens with a double-click).
+    private static func zip(_ file: URL, to dest: URL) throws {
+        try? FileManager.default.removeItem(at: dest)
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
+        p.arguments = ["-c", "-k", "--sequesterRsrc", file.path, dest.path]
+        let err = Pipe()
+        p.standardError = err
+        try p.run()
+        // Drain before waiting so a chatty failure can't fill the pipe and block.
+        let msg = String(data: err.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        p.waitUntilExit()
+        guard p.terminationStatus == 0 else {
+            let detail = msg.trimmingCharacters(in: .whitespacesAndNewlines)
+            throw NSError(domain: "Stash", code: 2, userInfo: [NSLocalizedDescriptionKey:
+                "Couldn't compress the export." + (detail.isEmpty ? "" : " \(detail)")])
         }
     }
 

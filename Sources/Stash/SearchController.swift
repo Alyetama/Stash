@@ -14,6 +14,9 @@ final class SearchController: ObservableObject {
     @Published private(set) var searching = false
     @Published private(set) var hasMore = false
     @Published var scope: SearchScope = .all
+    /// Content-type filter (images / links / files / text). Independent of `scope`,
+    /// so "images in a group" and "favorite links" both work.
+    @Published var typeFilter: ContentType = .all
     /// One-click quick-access scope shown as a tab beside the mode picker. Defaults
     /// to Favorites; the user can rebind it to any group. Persisted across launches.
     @Published var pinnedScope: SearchScope = .favorites { didSet { Self.persistPinned(pinnedScope) } }
@@ -81,7 +84,7 @@ final class SearchController: ObservableObject {
     private func loadPage(offset: Int, replace: Bool, gen: Int, start: Date) {
         let q = query
         let m = mode
-        let sc = scope
+        let filter = SearchFilter(scope: scope, type: typeFilter)
         let recent = q.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         // Flag an uncompilable regex so an empty result reads as "bad pattern" rather
         // than a genuine miss (the engine also returns [] on a compile failure).
@@ -101,9 +104,9 @@ final class SearchController: ObservableObject {
                 return
             }
             let page = recent
-                ? engine.recent(offset: offset, limit: SearchEngine.pageSize, scope: sc)
+                ? engine.recent(offset: offset, limit: SearchEngine.pageSize, filter: filter)
                 : engine.search(q, mode: m, offset: offset,
-                                limit: SearchEngine.pageSize, scope: sc,
+                                limit: SearchEngine.pageSize, filter: filter,
                                 isCancelled: { !self.isCurrent(gen) })
             guard self.isCurrent(gen) else { return }
             let ms = Date().timeIntervalSince(start) * 1000
@@ -120,28 +123,39 @@ final class SearchController: ObservableObject {
         }
     }
 
+    /// What's being listed, combining both filter axes: "items", "images",
+    /// "favorite links", "files in “Work”".
+    private var subjectLabel: String {
+        let noun = typeFilter.plural   // "items" when no type filter is set
+        switch scope {
+        case .all:          return noun
+        case .favorites:    return typeFilter == .all ? "favorites" : "favorite \(noun)"
+        case .group(let g): return "\(noun) in “\(g)”"
+        }
+    }
+
     private func updateStatus() {
         let n = results.count
+        let unfiltered = scope == .all && typeFilter == .all
         if n == 0 {
             if invalidRegex { status = "Invalid regex pattern"; return }
-            switch scope {
-            case .favorites:    status = lastWasRecent ? "No favorites yet" : "No matching favorites"
-            case .group(let g): status = lastWasRecent ? "“\(g)” is empty" : "No matches in “\(g)”"
-            case .all:          status = lastWasRecent ? "" : "No matches"
+            if lastWasRecent {
+                switch (scope, typeFilter) {
+                case (.all, .all):          status = ""
+                case (.favorites, .all):    status = "No favorites yet"
+                case (.group(let g), .all): status = "“\(g)” is empty"
+                default:                    status = "No \(subjectLabel) yet"
+                }
+            } else {
+                status = unfiltered ? "No matches" : "No matching \(subjectLabel)"
             }
             return
         }
         if lastWasRecent {
-            let label: String
-            switch scope {
-            case .favorites:    label = "favorites"
-            case .group(let g): label = "in “\(g)”"
-            case .all:          label = "items"
-            }
-            status = hasMore ? "Latest \(n) \(label) (scroll for more)"
-                             : "\(n) \(label) — newest first"
+            status = hasMore ? "Latest \(n) \(subjectLabel) (scroll for more)"
+                             : "\(n) \(subjectLabel) — newest first"
         } else {
-            let noun = n == 1 ? "result" : "results"
+            let noun = typeFilter == .all ? (n == 1 ? "result" : "results") : typeFilter.plural
             let shown = hasMore ? "\(n)+ \(noun) (scroll for more)" : "\(n) \(noun)"
             status = "\(shown) · \(String(format: "%.0f", firstPageMS)) ms"
         }
@@ -162,6 +176,7 @@ final class SearchController: ObservableObject {
         hasMore = false
         loadingMore = false
         scope = .all
+        typeFilter = .all
     }
 
     // MARK: favorite / delete

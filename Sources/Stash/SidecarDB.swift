@@ -7,6 +7,70 @@ enum SearchMode: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+/// What a clip holds, stored per row in `entries.ctype` so filtering by it is an
+/// indexed lookup rather than a full scan of a million rows.
+enum ContentType: String, CaseIterable, Identifiable, Equatable {
+    case all            // no filter
+    case text           // plain text (not a link or a path)
+    case link           // a single bare http(s) URL
+    case file           // a file copied from Finder (or a path-shaped clip)
+    case image
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .all:   return "All types"
+        case .text:  return "Text"
+        case .link:  return "Links"
+        case .file:  return "Files"
+        case .image: return "Images"
+        }
+    }
+
+    /// Plural noun for the status line ("12 images").
+    var plural: String {
+        switch self {
+        case .all:   return "items"
+        case .text:  return "text clips"
+        case .link:  return "links"
+        case .file:  return "files"
+        case .image: return "images"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .all:   return "square.stack"
+        case .text:  return "text.alignleft"
+        case .link:  return "link"
+        case .file:  return "doc"
+        case .image: return "photo"
+        }
+    }
+
+    /// The value stored in `entries.ctype`, or nil when nothing is being filtered.
+    var stored: String? { self == .all ? nil : rawValue }
+
+    /// Classify a text clip. `isFile` comes from the pasteboard carrying file URLs;
+    /// the path heuristic additionally covers clips captured before file tagging
+    /// existed and Copy 'Em imports.
+    static func classify(text: String, isFile: Bool) -> String {
+        if isFile || looksLikeFilePath(text) { return ContentType.file.rawValue }
+        return LinkTitle.url(in: text) != nil ? ContentType.link.rawValue : ContentType.text.rawValue
+    }
+
+    /// A single-line `file://` URL or absolute/home path. Deliberately conservative:
+    /// prose rarely starts with a slash, but a snippet like "/usr/bin/env" will match.
+    static func looksLikeFilePath(_ s: String) -> Bool {
+        let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty, t.count < 1024, !t.contains(where: \.isNewline) else { return false }
+        if t.lowercased().hasPrefix("file://") { return true }
+        guard t.hasPrefix("/") || t.hasPrefix("~/") else { return false }
+        return t.dropFirst().contains("/")   // needs a second separator
+    }
+}
+
 /// A row returned to the UI.
 struct SearchResult: Identifiable {
     let pk: Int64
@@ -94,6 +158,12 @@ final class SidecarDB {
         try? db.exec("ALTER TABLE entries ADD COLUMN hash INTEGER NOT NULL DEFAULT 0;")
         try? db.exec("CREATE INDEX IF NOT EXISTS entries_hash ON entries(hash);")
         try? db.exec("ALTER TABLE entries ADD COLUMN title TEXT;")
+        try? db.exec("ALTER TABLE entries ADD COLUMN ctype TEXT;")
+        // Indexed on (ctype, created), not ctype alone: the second column lets the
+        // recent listing read rows already in date order instead of fetching a whole
+        // bucket and sorting it (~230ms → instant on a 300k-row text bucket).
+        try? db.exec("DROP INDEX IF EXISTS entries_ctype;")
+        try? db.exec("CREATE INDEX IF NOT EXISTS entries_ctype_created ON entries(ctype, created);")
     }
 
     private func createTables() throws {
@@ -113,11 +183,13 @@ final class SidecarDB {
                 img_h     INTEGER NOT NULL DEFAULT 0,
                 ext       TEXT,
                 hash      INTEGER NOT NULL DEFAULT 0,
-                title     TEXT
+                title     TEXT,
+                ctype     TEXT
             );
             CREATE INDEX entries_created ON entries(created);
             CREATE INDEX entries_source_pk ON entries(source_pk);
             CREATE INDEX entries_hash ON entries(hash);
+            CREATE INDEX entries_ctype_created ON entries(ctype, created);
 
             CREATE VIRTUAL TABLE fts_trigram USING fts5(
                 text, content='entries', content_rowid='pk', tokenize='trigram');
@@ -142,26 +214,28 @@ final class SidecarDB {
     func commit() throws { try db.exec("COMMIT;") }
 
     private lazy var clipStmt = try! db.prepare("""
-        INSERT INTO entries(text, app, list, created, usecount, source, source_pk, hash)
-        VALUES (?, ?, NULL, ?, 0, 'clipboard', NULL, ?)
+        INSERT INTO entries(text, app, list, created, usecount, source, source_pk, hash, ctype)
+        VALUES (?, ?, NULL, ?, 0, 'clipboard', NULL, ?, ?)
     """)
 
     /// Insert a freshly-copied text clip with its content hash. Returns the pk.
     @discardableResult
-    func insertClip(text: String, app: String?, hash: Int64, at date: Date = Date()) throws -> Int64 {
+    func insertClip(text: String, app: String?, hash: Int64,
+                    ctype: String = ContentType.text.rawValue, at date: Date = Date()) throws -> Int64 {
         let s = clipStmt
         s.reset()
         s.bind(1, text)
         if let app { s.bind(2, app) } else { s.bindNull(2) }
         s.bind(3, date.timeIntervalSince1970)
         s.bind(4, hash)
+        s.bind(5, ctype)
         try s.step()
         return db.lastInsertRowID
     }
 
     private lazy var imageStmt = try! db.prepare("""
-        INSERT INTO entries(text, app, list, created, usecount, source, source_pk, kind, img_w, img_h, ext, hash)
-        VALUES (?, ?, NULL, ?, 0, ?, NULL, 'image', ?, ?, ?, ?)
+        INSERT INTO entries(text, app, list, created, usecount, source, source_pk, kind, img_w, img_h, ext, hash, ctype)
+        VALUES (?, ?, NULL, ?, 0, ?, NULL, 'image', ?, ?, ?, ?, 'image')
     """)
 
     /// Insert an image clip. Returns the new row's pk so the caller can write files.
@@ -182,8 +256,8 @@ final class SidecarDB {
     }
 
     private lazy var importStmt = try! db.prepare("""
-        INSERT INTO entries(text, app, list, created, usecount, source, source_pk, hash, title)
-        VALUES (?, ?, ?, ?, ?, 'copyem', ?, ?, ?)
+        INSERT INTO entries(text, app, list, created, usecount, source, source_pk, hash, title, ctype)
+        VALUES (?, ?, ?, ?, ?, 'copyem', ?, ?, ?, ?)
     """)
 
     /// Insert a historical entry imported from Copy 'Em.
@@ -205,6 +279,7 @@ final class SidecarDB {
         } else {
             s.bindNull(8)
         }
+        s.bind(9, ContentType.classify(text: r.text, isFile: false))
         try s.step()
     }
 
@@ -335,22 +410,38 @@ enum SearchScope: Equatable {
     case group(String)
 
     var groupName: String? { if case .group(let n) = self { return n } else { return nil } }
-    /// Standalone WHERE clause (recent / regex queries).
+}
+
+/// The two independent filter axes — which subset of clips (all / favorites / a
+/// group) and which content type — composed into SQL plus its bind values. Keeping
+/// conditions and binds in one ordered list is what stops the two from colliding
+/// on positional parameters.
+struct SearchFilter: Equatable {
+    var scope: SearchScope = .all
+    var type: ContentType = .all
+
+    private var terms: [(sql: String, bind: String?)] {
+        var out: [(String, String?)] = []
+        switch scope {
+        case .all:          break
+        case .favorites:    out.append(("e.favorite = 1", nil))
+        case .group(let g): out.append(("e.list = ?", g))
+        }
+        if let t = type.stored { out.append(("e.ctype = ?", t)) }
+        return out
+    }
+
+    /// Bind values for the conditions, in the order they appear in the SQL.
+    var binds: [String] { terms.compactMap(\.bind) }
+
+    /// Standalone clause (recent / regex queries): "" or "WHERE a AND b".
     var whereClause: String {
-        switch self {
-        case .all:       return ""
-        case .favorites: return "WHERE e.favorite = 1"
-        case .group:     return "WHERE e.list = ?"
-        }
+        let c = terms.map(\.sql)
+        return c.isEmpty ? "" : "WHERE " + c.joined(separator: " AND ")
     }
-    /// Extra condition appended after an FTS `MATCH ?`.
-    var andClause: String {
-        switch self {
-        case .all:       return ""
-        case .favorites: return " AND e.favorite = 1"
-        case .group:     return " AND e.list = ?"
-        }
-    }
+
+    /// Extra conditions appended after an FTS `MATCH ?`: "" or " AND a AND b".
+    var andClause: String { terms.map { " AND " + $0.sql }.joined() }
 }
 
 final class SearchEngine {
@@ -363,17 +454,17 @@ final class SearchEngine {
     }
 
     /// Most recently added entries (newest first) — shown when the query is empty.
-    func recent(offset: Int, limit: Int, scope: SearchScope) -> [SearchResult] {
+    func recent(offset: Int, limit: Int, filter: SearchFilter) -> [SearchResult] {
         do {
             let s = try db.prepare("""
                 SELECT \(SidecarDB.cols) FROM entries e
-                \(scope.whereClause)
+                \(filter.whereClause)
                 ORDER BY e.created DESC, e.pk DESC
                 LIMIT ? OFFSET ?
             """)
             defer { s.finalize() }
             var i: Int32 = 1
-            if let g = scope.groupName { s.bind(i, g); i += 1 }
+            for b in filter.binds { s.bind(i, b); i += 1 }
             s.bind(i, Int64(limit)); i += 1
             s.bind(i, Int64(offset))
             return try collect(s)
@@ -384,14 +475,14 @@ final class SearchEngine {
 
     /// Fetch one page of results. `offset` is how many already-loaded rows to skip.
     func search(_ raw: String, mode: SearchMode, offset: Int, limit: Int,
-                scope: SearchScope, isCancelled: () -> Bool) -> [SearchResult] {
+                filter: SearchFilter, isCancelled: () -> Bool) -> [SearchResult] {
         let query = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return [] }
         do {
             switch mode {
-            case .substring: return try ftsSearch(query, table: "fts_trigram", trigram: true, offset: offset, limit: limit, scope: scope)
-            case .words:     return try ftsSearch(query, table: "fts_words", trigram: false, offset: offset, limit: limit, scope: scope)
-            case .regex:     return try regexSearch(query, offset: offset, limit: limit, scope: scope, isCancelled: isCancelled)
+            case .substring: return try ftsSearch(query, table: "fts_trigram", trigram: true, offset: offset, limit: limit, filter: filter)
+            case .words:     return try ftsSearch(query, table: "fts_words", trigram: false, offset: offset, limit: limit, filter: filter)
+            case .regex:     return try regexSearch(query, offset: offset, limit: limit, filter: filter, isCancelled: isCancelled)
             }
         } catch {
             return []
@@ -419,7 +510,7 @@ final class SearchEngine {
     }
 
     private func ftsSearch(_ query: String, table: String, trigram: Bool,
-                           offset: Int, limit: Int, scope: SearchScope) throws -> [SearchResult] {
+                           offset: Int, limit: Int, filter: SearchFilter) throws -> [SearchResult] {
         guard let expr = ftsExpression(query, trigram: trigram) else { return [] }
         // e.pk tiebreak keeps OFFSET paging stable when many rows share a `created`
         // value (e.g. undated Copy 'Em imports all stored with created = 0).
@@ -428,7 +519,7 @@ final class SearchEngine {
             SELECT \(SidecarDB.cols)
             FROM \(table) f
             JOIN entries e ON e.pk = f.rowid
-            WHERE f.\(table) MATCH ?\(scope.andClause)
+            WHERE f.\(table) MATCH ?\(filter.andClause)
             ORDER BY \(order)
             LIMIT ? OFFSET ?
         """
@@ -436,7 +527,7 @@ final class SearchEngine {
         defer { s.finalize() }
         var i: Int32 = 1
         s.bind(i, expr); i += 1
-        if let g = scope.groupName { s.bind(i, g); i += 1 }
+        for b in filter.binds { s.bind(i, b); i += 1 }
         s.bind(i, Int64(limit)); i += 1
         s.bind(i, Int64(offset))
         return try collect(s)
@@ -445,7 +536,7 @@ final class SearchEngine {
     // MARK: regex (full scan of the compact text)
 
     private func regexSearch(_ pattern: String, offset: Int, limit: Int,
-                             scope: SearchScope, isCancelled: () -> Bool) throws -> [SearchResult] {
+                             filter: SearchFilter, isCancelled: () -> Bool) throws -> [SearchResult] {
         let re: NSRegularExpression
         do {
             re = try NSRegularExpression(pattern: pattern, options: [.caseInsensitive])
@@ -454,11 +545,12 @@ final class SearchEngine {
         }
         let s = try db.prepare("""
             SELECT \(SidecarDB.cols) FROM entries e
-            \(scope.whereClause)
+            \(filter.whereClause)
             ORDER BY e.created DESC, e.pk DESC
         """)
         defer { s.finalize() }
-        if let g = scope.groupName { s.bind(1, g) }
+        var i: Int32 = 1
+        for b in filter.binds { s.bind(i, b); i += 1 }
         var out: [SearchResult] = []
         var matchIndex = 0
         var sinceCheck = 0

@@ -8,12 +8,13 @@ final class ClipboardMonitor {
     private var timer: Timer?
     private var lastChangeCount: Int
     private let interval: TimeInterval
-    private let onText: (String, String?) -> Void
+    private let onText: (String, String?, Bool) -> Void
     private let onImage: (Data, String, String?) -> Void
 
-    /// - onText: (text, frontmost app). onImage: (image data, file extension, app).
+    /// - onText: (text, frontmost app, came from copied files).
+    ///   onImage: (image data, file extension, app).
     init(interval: TimeInterval = 0.4,
-         onText: @escaping (String, String?) -> Void,
+         onText: @escaping (String, String?, Bool) -> Void,
          onImage: @escaping (Data, String, String?) -> Void) {
         self.interval = interval
         self.onText = onText
@@ -39,12 +40,28 @@ final class ClipboardMonitor {
         lastChangeCount = pb.changeCount
         let app = NSWorkspace.shared.frontmostApplication?.localizedName
 
-        // Prefer text (more searchable); fall back to image data.
+        // Copying files in Finder puts both file URLs and a path string on the
+        // pasteboard, so check for the URLs to tag the clip as a file — the stored
+        // text stays the path, exactly as before.
+        let paths = Self.filePaths(from: pb)
+
+        // Prefer text (more searchable); fall back to file paths, then image data.
         if let text = pb.string(forType: .string), !text.isEmpty {
-            onText(text, app)
+            onText(text, app, !paths.isEmpty)
+        } else if !paths.isEmpty {
+            onText(paths.joined(separator: "\n"), app, true)
         } else if let (data, ext) = Self.imageData(from: pb) {
             onImage(data, ext, app)
         }
+    }
+
+    /// Paths of files currently on the pasteboard (empty when it isn't a file copy).
+    private static func filePaths(from pb: NSPasteboard) -> [String] {
+        guard pb.availableType(from: [.fileURL]) != nil,
+              let urls = pb.readObjects(forClasses: [NSURL.self],
+                                        options: [.urlReadingFileURLsOnly: true]) as? [URL]
+        else { return [] }
+        return urls.map(\.path)
     }
 
     /// Pasteboard image types we keep as-is, in priority order. PNG first (common,
