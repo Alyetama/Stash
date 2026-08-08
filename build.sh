@@ -26,10 +26,10 @@ cp "Sources/Stash/Resources/AppIcon.icns" "$APP_DIR/Contents/Resources/AppIcon.i
 SIGN_ID="Stash Code Signing"
 if security find-certificate -c "$SIGN_ID" >/dev/null 2>&1; then
     echo "==> Code signing with '$SIGN_ID'…"
-    codesign --force --deep --sign "$SIGN_ID" "$APP_DIR"
+    /usr/bin/codesign --force --deep --sign "$SIGN_ID" "$APP_DIR"
 else
     echo "==> Ad-hoc code signing (run ./setup-signing.sh for a stable signature)…"
-    codesign --force --deep --sign - "$APP_DIR"
+    /usr/bin/codesign --force --deep --sign - "$APP_DIR"
 fi
 
 echo ""
